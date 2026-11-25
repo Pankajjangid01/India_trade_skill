@@ -1,0 +1,236 @@
+[
+ {
+  "status": 200,
+  "headers": {
+   "Date": "Tue, 24 Nov 2026 04:50:00 GMT"
+  },
+  "body": {
+   "status": true,
+   "message": "SUCCESS",
+   "errorcode": "",
+   "data": {
+    "fetched": [
+     {
+      "exchange": "NSE",
+      "tradingSymbol": "Nifty 50",
+      "symbolToken": "99926000",
+      "ltp": 23512.35,
+      "open": 23512.35,
+      "high": 23512.35,
+      "low": 23512.35,
+      "close": 23512.35,
+      "lastTradeQty": 0,
+      "exchFeedTime": "24-Nov-2026 10:19:59",
+      "exchTradeTime": "24-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 23512.35,
+      "tradeVolume": 0,
+      "totBuyQuan": 0,
+      "totSellQuan": 0,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0
+     },
+     {
+      "exchange": "BSE",
+      "tradingSymbol": "SENSEX",
+      "symbolToken": "99919000",
+      "ltp": 77215.6,
+      "open": 77215.6,
+      "high": 77215.6,
+      "low": 77215.6,
+      "close": 77215.6,
+      "lastTradeQty": 0,
+      "exchFeedTime": "24-Nov-2026 10:19:58",
+      "exchTradeTime": "24-Nov-2026 10:19:58",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 77215.6,
+      "tradeVolume": 0,
+      "totBuyQuan": 0,
+      "totSellQuan": 0,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0
+     }
+    ],
+    "unfetched": []
+   }
+  }
+ },
+ {
+  "status": 200,
+  "headers": {
+   "Date": "Tue, 24 Nov 2026 04:50:00 GMT"
+  },
+  "body": {
+   "status": true,
+   "message": "SUCCESS",
+   "errorcode": "",
+   "data": {
+    "fetched": [
+     {
+      "exchange": "NFO",
+      "tradingSymbol": "NIFTY24NOV2623500CE",
+      "symbolToken": "45004",
+      "ltp": 112.4,
+      "open": 112.4,
+      "high": 112.4,
+      "low": 112.4,
+      "close": 112.4,
+      "lastTradeQty": 0,
+      "exchFeedTime": "24-Nov-2026 10:19:59",
+      "exchTradeTime": "24-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 112.4,
+      "tradeVolume": 0,
+      "totBuyQuan": 0,
+      "totSellQuan": 0,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "opnInterest": 4512300,
+      "upperCircuit": 600.0,
+      "lowerCircuit": 0.05,
+      "depth": {
+       "buy": [
+        {
+         "price": 112.35000000000001,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 112.30000000000001,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 112.25,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 112.2,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 112.15,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 112.45,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 112.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 112.55000000000001,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 112.60000000000001,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 112.65,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77200CE",
+      "symbolToken": "84002",
+      "ltp": 255.1,
+      "open": 255.1,
+      "high": 255.1,
+      "low": 255.1,
+      "close": 255.1,
+      "lastTradeQty": 0,
+      "exchFeedTime": "24-Nov-2026 10:19:59",
+      "exchTradeTime": "24-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 255.1,
+      "tradeVolume": 0,
+      "totBuyQuan": 0,
+      "totSellQuan": 0,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "opnInterest": 812000,
+      "upperCircuit": 900.0,
+      "lowerCircuit": 0.05,
+      "depth": {
+       "buy": [
+        {
+         "price": 255.04999999999998,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 255.0,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 254.95,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 254.9,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 254.85,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 255.15,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 255.2,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 255.25,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 255.29999999999998,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 255.35,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     }
+    ],
+    "unfetched": []
+   }
+  }
+ }
+]

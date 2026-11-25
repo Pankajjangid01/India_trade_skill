@@ -1,0 +1,25 @@
+{
+ "status": 200,
+ "headers": {
+  "Date": "Wed, 25 Nov 2026 04:50:00 GMT"
+ },
+ "body": {
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": [
+   {
+    "pcr": 1.04,
+    "tradingSymbol": "NIFTY29DEC26FUT"
+   },
+   {
+    "pcr": 0.92,
+    "tradingSymbol": "BANKNIFTY29DEC26FUT"
+   },
+   {
+    "pcr": 0.61,
+    "tradingSymbol": "RELIANCE29DEC26FUT"
+   }
+  ]
+ }
+}

@@ -1,0 +1,80 @@
+[
+ {
+  "token": "99926000",
+  "symbol": "Nifty 50",
+  "name": "NIFTY",
+  "expiry": "",
+  "strike": "0.000000",
+  "lotsize": "1",
+  "instrumenttype": "AMXIDX",
+  "exch_seg": "NSE",
+  "tick_size": "0.000000",
+  "freeze_qty": "",
+  "is_cas_enabled": "false"
+ },
+ {
+  "token": "2885",
+  "symbol": "RELIANCE-EQ",
+  "name": "RELIANCE",
+  "expiry": "",
+  "strike": "-1.000000",
+  "lotsize": "1",
+  "instrumenttype": "",
+  "exch_seg": "NSE",
+  "tick_size": "10.000000",
+  "freeze_qty": "",
+  "is_cas_enabled": "true"
+ },
+ {
+  "token": "45004",
+  "symbol": "NIFTY24NOV2623500CE",
+  "name": "NIFTY",
+  "expiry": "24NOV2026",
+  "strike": "2350000.000000",
+  "lotsize": "65",
+  "instrumenttype": "OPTIDX",
+  "exch_seg": "NFO",
+  "tick_size": "5.000000",
+  "freeze_qty": "1801",
+  "is_cas_enabled": "false"
+ },
+ {
+  "token": "45014",
+  "symbol": "NIFTY01DEC2623500CE",
+  "name": "NIFTY",
+  "expiry": "01DEC2026",
+  "strike": "2350000.000000",
+  "lotsize": "65",
+  "instrumenttype": "OPTIDX",
+  "exch_seg": "NFO",
+  "tick_size": "5.000000",
+  "freeze_qty": "1801",
+  "is_cas_enabled": "false"
+ },
+ {
+  "token": "61000",
+  "symbol": "RELIANCE24NOV261300CE",
+  "name": "RELIANCE",
+  "expiry": "24NOV2026",
+  "strike": "130000.000000",
+  "lotsize": "500",
+  "instrumenttype": "OPTSTK",
+  "exch_seg": "NFO",
+  "tick_size": "5.000000",
+  "freeze_qty": "10001",
+  "is_cas_enabled": "false"
+ },
+ {
+  "token": "61010",
+  "symbol": "RELIANCE29DEC261300CE",
+  "name": "RELIANCE",
+  "expiry": "29DEC2026",
+  "strike": "130000.000000",
+  "lotsize": "500",
+  "instrumenttype": "OPTSTK",
+  "exch_seg": "NFO",
+  "tick_size": "5.000000",
+  "freeze_qty": "10001",
+  "is_cas_enabled": "false"
+ }
+]

@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+ENV/
+env/
+.venv
+.python-version
+pip-log.txt
+pip-delete-this-directory.spyder
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+*.local
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Trader runtime state
+trader/state/
+trader/cache/
+trader/history/
+trader/*.json
+!trader/config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Logs
+*.log
+/tmp/*.log

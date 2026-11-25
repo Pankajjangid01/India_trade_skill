@@ -1,0 +1,41 @@
+[
+ {
+  "token": "99926000",
+  "symbol": "Nifty 50",
+  "name": "NIFTY",
+  "expiry": "",
+  "strike": "0.000000",
+  "lotsize": "1",
+  "instrumenttype": "AMXIDX",
+  "exch_seg": "NSE",
+  "tick_size": "0.000000",
+  "freeze_qty": "",
+  "is_cas_enabled": "false"
+ },
+ {
+  "token": "99926009",
+  "symbol": "Nifty Bank",
+  "name": "BANKNIFTY",
+  "expiry": "",
+  "strike": "0.000000",
+  "lotsize": "1",
+  "instrumenttype": "AMXIDX",
+  "exch_seg": "NSE",
+  "tick_size": "0.000000",
+  "freeze_qty": "",
+  "is_cas_enabled": "false"
+ },
+ {
+  "token": "99919000",
+  "symbol": "SENSEX",
+  "name": "SENSEX",
+  "expiry": "",
+  "strike": "0.000000",
+  "lotsize": "1",
+  "instrumenttype": "AMXIDX",
+  "exch_seg": "BSE",
+  "tick_size": "0.000000",
+  "freeze_qty": "",
+  "is_cas_enabled": "false"
+ }
+]

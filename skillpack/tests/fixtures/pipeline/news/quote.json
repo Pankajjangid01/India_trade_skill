@@ -1,0 +1,44 @@
+{
+ "status": 200,
+ "headers": {
+  "Date": "Tue, 24 Nov 2026 04:03:00 GMT"
+ },
+ "body": {
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": {
+   "fetched": [
+    {
+     "exchange": "NSE",
+     "tradingSymbol": "Nifty 50",
+     "symbolToken": "99926000",
+     "ltp": 23540.05,
+     "open": 23500.0,
+     "high": 23550.0,
+     "low": 23480.0,
+     "close": 23460.0,
+     "lastTradeQty": 0,
+     "exchFeedTime": "24-Nov-2026 09:32:59",
+     "exchTradeTime": "24-Nov-2026 09:32:59",
+     "netChange": 80.05,
+     "percentChange": 0.34,
+     "avgPrice": 0.0,
+     "tradeVolume": 0,
+     "opnInterest": 0,
+     "lowerCircuit": 0.0,
+     "upperCircuit": 0.0,
+     "totBuyQuan": 0,
+     "totSellQuan": 0,
+     "52WeekLow": 21900.0,
+     "52WeekHigh": 24400.0,
+     "depth": {
+      "buy": [],
+      "sell": []
+     }
+    }
+   ],
+   "unfetched": []
+  }
+ }
+}

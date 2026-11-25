@@ -1,0 +1,10 @@
+{
+  "_note": "Copy to trader/events.json and keep it yourself. Every entry below is an EXAMPLE with a placeholder date: check each against the official source (RBI, the Ministry of Finance, the US Federal Reserve, the company's exchange filing) and fix or delete it, then remove \"example\". The pack never guesses a date. kind is one of rbi, budget, fed, data, election, result, board_meeting, other; result and board_meeting take a symbol and set RESULT_TODAY or BOARD_MEETING on that day.",
+  "events": [
+    {"date": "2026-12-04", "name": "RBI monetary policy decision", "kind": "rbi", "example": true},
+    {"date": "2027-02-01", "name": "Union Budget", "kind": "budget", "example": true},
+    {"date": "2026-12-09", "name": "US Fed (FOMC) rate decision", "kind": "fed", "example": true},
+    {"date": "2026-12-01", "name": "RELIANCE quarterly results", "kind": "result", "symbol": "RELIANCE", "example": true},
+    {"date": "2026-12-02", "name": "SBIN board meeting", "kind": "board_meeting", "symbol": "SBIN", "example": true}
+  ]
+}

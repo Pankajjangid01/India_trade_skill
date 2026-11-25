@@ -1,0 +1,176 @@
+{
+ "status": 200,
+ "headers": {
+  "Date": "Tue, 24 Nov 2026 04:01:00 GMT"
+ },
+ "body": {
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": {
+   "fetched": [
+    {
+     "exchange": "NSE",
+     "tradingSymbol": "IDEA-EQ",
+     "symbolToken": "14366",
+     "ltp": 9.5,
+     "open": 9.4,
+     "high": 9.5,
+     "low": 9.4,
+     "close": 9.4,
+     "lastTradeQty": 1,
+     "exchFeedTime": "24-Nov-2026 09:30:59",
+     "exchTradeTime": "24-Nov-2026 09:30:59",
+     "netChange": 0.1,
+     "percentChange": 1.06,
+     "avgPrice": 9.5,
+     "tradeVolume": 90000000,
+     "opnInterest": 0,
+     "lowerCircuit": 0.0,
+     "upperCircuit": 0.0,
+     "totBuyQuan": 1000,
+     "totSellQuan": 1000,
+     "52WeekLow": 0.0,
+     "52WeekHigh": 0.0,
+     "depth": {
+      "buy": [
+       {
+        "price": 9.49,
+        "quantity": 100,
+        "orders": 2
+       }
+      ],
+      "sell": [
+       {
+        "price": 9.5,
+        "quantity": 100,
+        "orders": 2
+       }
+      ]
+     }
+    },
+    {
+     "exchange": "NSE",
+     "tradingSymbol": "INFY-EQ",
+     "symbolToken": "1594",
+     "ltp": 1601.0,
+     "open": 1590.0,
+     "high": 1601.0,
+     "low": 1590.0,
+     "close": 1590.0,
+     "lastTradeQty": 1,
+     "exchFeedTime": "24-Nov-2026 09:30:59",
+     "exchTradeTime": "24-Nov-2026 09:30:59",
+     "netChange": 11.0,
+     "percentChange": 0.69,
+     "avgPrice": 1601.0,
+     "tradeVolume": 1500000,
+     "opnInterest": 0,
+     "lowerCircuit": 0.0,
+     "upperCircuit": 0.0,
+     "totBuyQuan": 1000,
+     "totSellQuan": 1000,
+     "52WeekLow": 0.0,
+     "52WeekHigh": 0.0,
+     "depth": {
+      "buy": [
+       {
+        "price": 1600.8,
+        "quantity": 100,
+        "orders": 2
+       }
+      ],
+      "sell": [
+       {
+        "price": 1601.2,
+        "quantity": 100,
+        "orders": 2
+       }
+      ]
+     }
+    },
+    {
+     "exchange": "NSE",
+     "tradingSymbol": "RELIANCE-EQ",
+     "symbolToken": "2885",
+     "ltp": 1505.0,
+     "open": 1490.0,
+     "high": 1505.0,
+     "low": 1490.0,
+     "close": 1490.0,
+     "lastTradeQty": 1,
+     "exchFeedTime": "24-Nov-2026 09:30:59",
+     "exchTradeTime": "24-Nov-2026 09:30:59",
+     "netChange": 15.0,
+     "percentChange": 1.01,
+     "avgPrice": 1505.0,
+     "tradeVolume": 2100000,
+     "opnInterest": 0,
+     "lowerCircuit": 0.0,
+     "upperCircuit": 0.0,
+     "totBuyQuan": 1000,
+     "totSellQuan": 1000,
+     "52WeekLow": 0.0,
+     "52WeekHigh": 0.0,
+     "depth": {
+      "buy": [
+       {
+        "price": 1504.8,
+        "quantity": 100,
+        "orders": 2
+       }
+      ],
+      "sell": [
+       {
+        "price": 1505.2,
+        "quantity": 100,
+        "orders": 2
+       }
+      ]
+     }
+    },
+    {
+     "exchange": "NSE",
+     "tradingSymbol": "SBIN-EQ",
+     "symbolToken": "3045",
+     "ltp": 800.0,
+     "open": 795.0,
+     "high": 800.0,
+     "low": 795.0,
+     "close": 795.0,
+     "lastTradeQty": 1,
+     "exchFeedTime": "24-Nov-2026 09:30:59",
+     "exchTradeTime": "24-Nov-2026 09:30:59",
+     "netChange": 5.0,
+     "percentChange": 0.63,
+     "avgPrice": 800.0,
+     "tradeVolume": 3000000,
+     "opnInterest": 0,
+     "lowerCircuit": 0.0,
+     "upperCircuit": 0.0,
+     "totBuyQuan": 1000,
+     "totSellQuan": 1000,
+     "52WeekLow": 0.0,
+     "52WeekHigh": 0.0,
+     "depth": {
+      "buy": [
+       {
+        "price": 797.5,
+        "quantity": 100,
+        "orders": 2
+       }
+      ],
+      "sell": [
+       {
+        "price": 802.5,
+        "quantity": 100,
+        "orders": 2
+       }
+      ]
+     }
+    }
+   ],
+   "unfetched": []
+  }
+ }
+}

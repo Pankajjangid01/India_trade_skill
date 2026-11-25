@@ -1,0 +1,23 @@
+{
+ "status": 200,
+ "headers": {
+  "Date": "Tue, 24 Nov 2026 04:01:00 GMT"
+ },
+ "body": {
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": [
+   {
+    "token": "532083",
+    "symbol": "SHKALYN",
+    "message": "Security is under Gross settlement (Trade for Trade)"
+   },
+   {
+    "token": "14366",
+    "symbol": "IDEA",
+    "message": "Stage 1 Short Term ASM scrip"
+   }
+  ]
+ }
+}

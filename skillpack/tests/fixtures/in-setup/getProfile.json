@@ -1,0 +1,27 @@
+{
+ "status": 200,
+ "headers": {
+  "Date": "Tue, 24 Nov 2026 04:50:00 GMT"
+ },
+ "body": {
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": {
+   "clientcode": "REDACTED",
+   "name": "REDACTED",
+   "email": "REDACTED",
+   "mobileno": "REDACTED",
+   "exchanges": [
+    "nse_cm",
+    "nse_fo",
+    "bse_cm",
+    "bse_fo"
+   ],
+   "products": [
+    "MIS",
+    "NRML"
+   ]
+  }
+ }
+}

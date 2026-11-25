@@ -1,0 +1,88 @@
+{
+  "trades": [
+    {
+      "ticket_id": "T20261124-01",
+      "date": "2026-11-24",
+      "symbol": "NIFTY",
+      "instrument": {
+        "tradingsymbol": "NIFTY01DEC2623500CE",
+        "token": "45014",
+        "segment": "NFO",
+        "underlying": "NIFTY",
+        "strike": 23500.0,
+        "type": "CE",
+        "expiry": "2026-12-01",
+        "expiry_raw": "01DEC2026",
+        "lot_size": 65,
+        "tick_size": 0.05,
+        "freeze_qty": 1801
+      },
+      "segment_class": "FO_OPTIONS",
+      "quantity": 130,
+      "fill_price": 112.4,
+      "fill_time_ist": "09:35",
+      "exit_price": 78.7,
+      "exit_time_ist": "09:52",
+      "exit_reason": "stop",
+      "charges_inr": 73.28,
+      "gross_pnl_inr": -1926.72,
+      "net_pnl_inr": -2000.0
+    },
+    {
+      "ticket_id": "T20261124-02",
+      "date": "2026-11-24",
+      "symbol": "NIFTY",
+      "instrument": {
+        "tradingsymbol": "NIFTY01DEC2623500CE",
+        "token": "45014",
+        "segment": "NFO",
+        "underlying": "NIFTY",
+        "strike": 23500.0,
+        "type": "CE",
+        "expiry": "2026-12-01",
+        "expiry_raw": "01DEC2026",
+        "lot_size": 65,
+        "tick_size": 0.05,
+        "freeze_qty": 1801
+      },
+      "segment_class": "FO_OPTIONS",
+      "quantity": 130,
+      "fill_price": 112.4,
+      "fill_time_ist": "10:01",
+      "exit_price": 78.7,
+      "exit_time_ist": "10:20",
+      "exit_reason": "stop",
+      "charges_inr": 73.28,
+      "gross_pnl_inr": -1926.72,
+      "net_pnl_inr": -2000.0
+    },
+    {
+      "ticket_id": "T20261124-03",
+      "date": "2026-11-24",
+      "symbol": "NIFTY",
+      "instrument": {
+        "tradingsymbol": "NIFTY01DEC2623500CE",
+        "token": "45014",
+        "segment": "NFO",
+        "underlying": "NIFTY",
+        "strike": 23500.0,
+        "type": "CE",
+        "expiry": "2026-12-01",
+        "expiry_raw": "01DEC2026",
+        "lot_size": 65,
+        "tick_size": 0.05,
+        "freeze_qty": 1801
+      },
+      "segment_class": "FO_OPTIONS",
+      "quantity": 130,
+      "fill_price": 112.4,
+      "fill_time_ist": "10:30",
+      "exit_price": 78.7,
+      "exit_time_ist": "11:05",
+      "exit_reason": "stop",
+      "charges_inr": 73.28,
+      "gross_pnl_inr": -1926.72,
+      "net_pnl_inr": -2000.0
+    }
+  ]
+}

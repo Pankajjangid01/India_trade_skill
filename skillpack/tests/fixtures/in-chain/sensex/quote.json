@@ -1,0 +1,1194 @@
+[
+ {
+  "status": 200,
+  "headers": {
+   "Date": "Wed, 25 Nov 2026 04:50:00 GMT"
+  },
+  "body": {
+   "status": true,
+   "message": "SUCCESS",
+   "errorcode": "",
+   "data": {
+    "fetched": [
+     {
+      "exchange": "BSE",
+      "tradingSymbol": "SENSEX",
+      "symbolToken": "99919000",
+      "ltp": 77215.6,
+      "open": 77215.6,
+      "high": 77215.6,
+      "low": 77215.6,
+      "close": 77215.6,
+      "lastTradeQty": 0,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 77215.6,
+      "tradeVolume": 0,
+      "opnInterest": 0,
+      "lowerCircuit": 0.0,
+      "upperCircuit": 0.0,
+      "totBuyQuan": 0,
+      "totSellQuan": 0,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0
+     }
+    ],
+    "unfetched": []
+   }
+  }
+ },
+ {
+  "status": 200,
+  "headers": {
+   "Date": "Wed, 25 Nov 2026 04:50:00 GMT"
+  },
+  "body": {
+   "status": true,
+   "message": "SUCCESS",
+   "errorcode": "",
+   "data": {
+    "fetched": [
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV76900CE",
+      "symbolToken": "1160004",
+      "ltp": 436.1,
+      "open": 436.1,
+      "high": 436.1,
+      "low": 436.1,
+      "close": 436.1,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 436.1,
+      "tradeVolume": 41000,
+      "opnInterest": 310000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 2180.5,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 435.6,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 435.55,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 435.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 435.45,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 435.4,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 436.6,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 436.65,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 436.7,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 436.75,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 436.8,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV76900PE",
+      "symbolToken": "1160005",
+      "ltp": 103.9,
+      "open": 103.9,
+      "high": 103.9,
+      "low": 103.9,
+      "close": 103.9,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 103.9,
+      "tradeVolume": 99000,
+      "opnInterest": 520000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 519.5,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 103.4,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 103.35,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 103.3,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 103.25,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 103.2,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 104.4,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 104.45,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 104.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 104.55,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 104.6,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77000CE",
+      "symbolToken": "1160006",
+      "ltp": 366.9,
+      "open": 366.9,
+      "high": 366.9,
+      "low": 366.9,
+      "close": 366.9,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 366.9,
+      "tradeVolume": 66000,
+      "opnInterest": 420000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 1834.5,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 366.4,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 366.35,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 366.3,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 366.25,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 366.2,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 367.4,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 367.45,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 367.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 367.55,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 367.6,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77000PE",
+      "symbolToken": "1160007",
+      "ltp": 134.65,
+      "open": 134.65,
+      "high": 134.65,
+      "low": 134.65,
+      "close": 134.65,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 134.65,
+      "tradeVolume": 150000,
+      "opnInterest": 690000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 673.25,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 134.15,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 134.1,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 134.05,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 134.0,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 133.95,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 135.15,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 135.2,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 135.25,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 135.3,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 135.35,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77100CE",
+      "symbolToken": "1160008",
+      "ltp": 303.9,
+      "open": 303.9,
+      "high": 303.9,
+      "low": 303.9,
+      "close": 303.9,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 303.9,
+      "tradeVolume": 120000,
+      "opnInterest": 560000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 1519.5,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 303.4,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 303.35,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 303.3,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 303.25,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 303.2,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 304.4,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 304.45,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 304.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 304.55,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 304.6,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77100PE",
+      "symbolToken": "1160009",
+      "ltp": 171.65,
+      "open": 171.65,
+      "high": 171.65,
+      "low": 171.65,
+      "close": 171.65,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 171.65,
+      "tradeVolume": 170000,
+      "opnInterest": 610000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 858.25,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 171.15,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 171.1,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 171.05,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 171.0,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 170.95,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 172.15,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 172.2,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 172.25,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 172.3,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 172.35,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77200CE",
+      "symbolToken": "1160010",
+      "ltp": 247.55,
+      "open": 247.55,
+      "high": 247.55,
+      "low": 247.55,
+      "close": 247.55,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 247.55,
+      "tradeVolume": 260000,
+      "opnInterest": 880000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 1237.75,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 247.05,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 247.0,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 246.95,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 246.9,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 246.85,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 248.05,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 248.1,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 248.15,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 248.2,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 248.25,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77200PE",
+      "symbolToken": "1160011",
+      "ltp": 215.25,
+      "open": 215.25,
+      "high": 215.25,
+      "low": 215.25,
+      "close": 215.25,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 215.25,
+      "tradeVolume": 210000,
+      "opnInterest": 740000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 1076.25,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 214.75,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 214.7,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 214.65,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 214.6,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 214.55,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 215.75,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 215.8,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 215.85,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 215.9,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 215.95,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77300CE",
+      "symbolToken": "1160012",
+      "ltp": 198.0,
+      "open": 198.0,
+      "high": 198.0,
+      "low": 198.0,
+      "close": 198.0,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 198.0,
+      "tradeVolume": 230000,
+      "opnInterest": 720000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 990.0,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 197.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 197.45,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 197.4,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 197.35,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 197.3,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 198.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 198.55,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 198.6,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 198.65,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 198.7,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77300PE",
+      "symbolToken": "1160013",
+      "ltp": 265.65,
+      "open": 265.65,
+      "high": 265.65,
+      "low": 265.65,
+      "close": 265.65,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 265.65,
+      "tradeVolume": 90000,
+      "opnInterest": 380000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 1328.25,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 265.15,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 265.1,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 265.05,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 265.0,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 264.95,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 266.15,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 266.2,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 266.25,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 266.3,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 266.35,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     }
+    ],
+    "unfetched": []
+   }
+  }
+ },
+ {
+  "status": 200,
+  "headers": {
+   "Date": "Wed, 25 Nov 2026 04:50:00 GMT"
+  },
+  "body": {
+   "status": true,
+   "message": "SUCCESS",
+   "errorcode": "",
+   "data": {
+    "fetched": [
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77400CE",
+      "symbolToken": "1160014",
+      "ltp": 155.35,
+      "open": 155.35,
+      "high": 155.35,
+      "low": 155.35,
+      "close": 155.35,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 155.35,
+      "tradeVolume": 280000,
+      "opnInterest": 950000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 776.75,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 154.85,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 154.8,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 154.75,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 154.7,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 154.65,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 155.85,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 155.9,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 155.95,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 156.0,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 156.05,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77400PE",
+      "symbolToken": "1160015",
+      "ltp": 323.0,
+      "open": 323.0,
+      "high": 323.0,
+      "low": 323.0,
+      "close": 323.0,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 323.0,
+      "tradeVolume": 52000,
+      "opnInterest": 210000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 1615.0,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 322.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 322.45,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 322.4,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 322.35,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 322.3,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 323.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 323.55,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 323.6,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 323.65,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 323.7,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77500CE",
+      "symbolToken": "1160016",
+      "ltp": 119.35,
+      "open": 119.35,
+      "high": 119.35,
+      "low": 119.35,
+      "close": 119.35,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 119.35,
+      "tradeVolume": 150000,
+      "opnInterest": 640000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 596.75,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 118.85,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 118.8,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 118.75,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 118.7,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 118.65,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 119.85,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 119.9,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 119.95,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 120.0,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 120.05,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     },
+     {
+      "exchange": "BFO",
+      "tradingSymbol": "SENSEX26NOV77500PE",
+      "symbolToken": "1160017",
+      "ltp": 387.0,
+      "open": 387.0,
+      "high": 387.0,
+      "low": 387.0,
+      "close": 387.0,
+      "lastTradeQty": 65,
+      "exchFeedTime": "25-Nov-2026 10:19:59",
+      "exchTradeTime": "25-Nov-2026 10:19:59",
+      "netChange": 0.0,
+      "percentChange": 0.0,
+      "avgPrice": 387.0,
+      "tradeVolume": 30000,
+      "opnInterest": 120000,
+      "lowerCircuit": 0.05,
+      "upperCircuit": 1935.0,
+      "totBuyQuan": 65000,
+      "totSellQuan": 65000,
+      "52WeekLow": 0.0,
+      "52WeekHigh": 0.0,
+      "depth": {
+       "buy": [
+        {
+         "price": 386.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 386.45,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 386.4,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 386.35,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 386.3,
+         "quantity": 650,
+         "orders": 3
+        }
+       ],
+       "sell": [
+        {
+         "price": 387.5,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 387.55,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 387.6,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 387.65,
+         "quantity": 650,
+         "orders": 3
+        },
+        {
+         "price": 387.7,
+         "quantity": 650,
+         "orders": 3
+        }
+       ]
+      }
+     }
+    ],
+    "unfetched": []
+   }
+  }
+ }
+]

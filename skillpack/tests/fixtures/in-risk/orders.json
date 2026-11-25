@@ -1,0 +1,49 @@
+{
+  "orders": [
+    {
+      "ticket_id": "T20261124-01",
+      "created_by": "in-budget",
+      "date": "2026-11-24",
+      "as_of_ist": "2026-11-24T09:41:00+05:30",
+      "source": "plan.json + config.json + charges.json",
+      "symbol": "NIFTY",
+      "direction": "bullish",
+      "instrument": {
+        "tradingsymbol": "NIFTY01DEC2623500CE",
+        "token": "45014",
+        "segment": "NFO",
+        "underlying": "NIFTY",
+        "strike": 23500.0,
+        "type": "CE",
+        "expiry": "2026-12-01",
+        "expiry_raw": "01DEC2026",
+        "lot_size": 65,
+        "tick_size": 0.05,
+        "freeze_qty": 1801
+      },
+      "side": "BUY",
+      "product": "INTRADAY",
+      "limit_price": 112.4,
+      "lots": 2,
+      "quantity": 130,
+      "order_quantities": [
+        130
+      ],
+      "premium_stop": 78.7,
+      "target_premium": 179.8,
+      "underlying_stop": 23515.0,
+      "target_underlying": 23657.5,
+      "risk_inr": {
+        "premium_at_stop": 4381.0,
+        "charges_round_trip": 73.28,
+        "total": 4454.28
+      },
+      "capital_used_inr": 14612.0,
+      "charges_verified": false,
+      "risk_result": null,
+      "status": "DRAFT",
+      "fill": null,
+      "exit": null
+    }
+  ]
+}

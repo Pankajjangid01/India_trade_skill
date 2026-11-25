@@ -1,0 +1,21 @@
+{"created_by": "in-budget", "as_of_ist": "2026-11-24T09:57:00+05:30", "source": "synthetic test fixture shaped like CONTRACTS.md",
+ "orders": [
+  {"ticket_id": "T20261124-01", "created_by": "in-budget", "date": "2026-11-24", "symbol": "NIFTY", "direction": "bullish",
+   "instrument": {"tradingsymbol": "NIFTY01DEC2623500CE", "token": "45014", "segment": "NFO", "underlying": "NIFTY",
+                  "strike": 23500.0, "type": "CE", "expiry": "2026-12-01", "expiry_raw": "01DEC2026",
+                  "lot_size": 65, "tick_size": 0.05, "freeze_qty": 1801},
+   "side": "BUY", "product": "INTRADAY", "limit_price": 112.4, "lots": 2, "quantity": 130, "order_quantities": [130],
+   "premium_stop": 78.7, "target_premium": 179.8, "underlying_stop": 23515.0, "target_underlying": 23657.5,
+   "entry_underlying": 23562.5, "no_progress_bars": 6,
+   "risk_result": {"verdict": "PASS", "reasons": [], "checks": [], "checked_at_ist": "2026-11-24T09:41:30+05:30"},
+   "status": "FILLED", "fill": {"price": 112.4, "time_ist": "09:41", "quantity": 130}, "exit": null},
+  {"ticket_id": "T20261124-04", "created_by": "in-budget", "date": "2026-11-24", "symbol": "NIFTY", "direction": "bearish",
+   "instrument": {"tradingsymbol": "NIFTY24NOV2623500PE", "token": "45005", "segment": "NFO", "underlying": "NIFTY",
+                  "strike": 23500.0, "type": "PE", "expiry": "2026-11-24", "expiry_raw": "24NOV2026",
+                  "lot_size": 65, "tick_size": 0.05, "freeze_qty": 1801},
+   "side": "BUY", "product": "INTRADAY", "limit_price": 85.3, "lots": 1, "quantity": 65, "order_quantities": [65],
+   "premium_stop": 59.7, "target_premium": 136.5, "underlying_stop": 23640.0, "target_underlying": 23420.0,
+   "entry_underlying": 23565.0, "no_progress_bars": 6,
+   "risk_result": {"verdict": "PASS", "reasons": [], "checks": [], "checked_at_ist": "2026-11-24T09:56:30+05:30"},
+   "status": "FILLED", "fill": {"price": 85.3, "time_ist": "09:57", "quantity": 65}, "exit": null}
+ ]}

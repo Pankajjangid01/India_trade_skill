@@ -1,0 +1,7 @@
+[
+{"token": "99926000", "symbol": "Nifty 50", "name": "NIFTY", "expiry": "", "strike": "0.000000", "lotsize": "1", "instrumenttype": "AMXIDX", "exch_seg": "NSE", "tick_size": "0.000000", "freeze_qty": "", "is_cas_enabled": "false"},
+{"token": "45100", "symbol": "NIFTY01DEC2623500CE", "name": "NIFTY", "expiry": "01DEC2026", "strike": "2350000.000000", "lotsize": "65", "instrumenttype": "OPTIDX", "exch_seg": "NFO", "tick_size": "5.000000", "freeze_qty": "1801", "is_cas_enabled": "false"},
+{"token": "45101", "symbol": "NIFTY01DEC2623500PE", "name": "NIFTY", "expiry": "01DEC2026", "strike": "2350000.000000", "lotsize": "65", "instrumenttype": "OPTIDX", "exch_seg": "NFO", "tick_size": "5.000000", "freeze_qty": "1801", "is_cas_enabled": "false"},
+{"token": "45102", "symbol": "NIFTY01DEC2623550CE", "name": "NIFTY", "expiry": "01DEC2026", "strike": "2355000.000000", "lotsize": "65", "instrumenttype": "OPTIDX", "exch_seg": "NFO", "tick_size": "5.000000", "freeze_qty": "1801", "is_cas_enabled": "false"},
+{"token": "45103", "symbol": "NIFTY01DEC2623550PE", "name": "NIFTY", "expiry": "01DEC2026", "strike": "2355000.000000", "lotsize": "65", "instrumenttype": "OPTIDX", "exch_seg": "NFO", "tick_size": "5.000000", "freeze_qty": "1801", "is_cas_enabled": "false"}
+]

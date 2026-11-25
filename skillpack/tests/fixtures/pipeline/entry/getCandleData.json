@@ -1,0 +1,21 @@
+{
+ "status": 200,
+ "headers": {
+  "Date": "Tue, 24 Nov 2026 04:11:00 GMT"
+ },
+ "body": {
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": [
+   [
+    "2026-11-23T00:00:00+05:30",
+    23380.0,
+    23475.0,
+    23360.0,
+    23460.0,
+    0
+   ]
+  ]
+ }
+}

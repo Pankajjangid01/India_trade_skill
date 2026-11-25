@@ -1,0 +1,61 @@
+{
+ "status": 200,
+ "headers": {
+  "Date": "Tue, 24 Nov 2026 04:50:00 GMT"
+ },
+ "body": {
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": [
+   {
+    "name": "NIFTY",
+    "expiry": "24NOV2026",
+    "strikePrice": "23450.000000",
+    "optionType": "CE",
+    "delta": "0.5",
+    "gamma": "0.0012",
+    "theta": "-25.1",
+    "vega": "5.2",
+    "impliedVolatility": "14.2",
+    "tradeVolume": "123456.00"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "24NOV2026",
+    "strikePrice": "23450.000000",
+    "optionType": "PE",
+    "delta": "0.5",
+    "gamma": "0.0012",
+    "theta": "-25.1",
+    "vega": "5.2",
+    "impliedVolatility": "14.2",
+    "tradeVolume": "123456.00"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "24NOV2026",
+    "strikePrice": "23500.000000",
+    "optionType": "CE",
+    "delta": "0.5",
+    "gamma": "0.0012",
+    "theta": "-25.1",
+    "vega": "5.2",
+    "impliedVolatility": "14.2",
+    "tradeVolume": "123456.00"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "24NOV2026",
+    "strikePrice": "23500.000000",
+    "optionType": "PE",
+    "delta": "0.5",
+    "gamma": "0.0012",
+    "theta": "-25.1",
+    "vega": "5.2",
+    "impliedVolatility": "14.2",
+    "tradeVolume": "123456.00"
+   }
+  ]
+ }
+}

@@ -1,0 +1,15 @@
+{
+  "verified": false,
+  "as_of": "2026-11-24",
+  "source": "NFO rates match Angel One's estimateCharges API on 2026-11-24 (brokerage Rs 30 per executed order, exchange 0.03553%, STT 0.15% on sell, stamp 0.003% on buy, SEBI Rs 10 per crore, GST 18%). The BFO exchange rate is not yet checked against the broker. Set verified yourself.",
+  "brokerage_per_order_inr": 30,
+  "stt_option_sell_pct": 0.15,
+  "stt_note": "STT on the sale of an option premium is 0.15% (Budget 2026), confirmed by the broker's calculator on 2026-11-24",
+  "exchange_txn_pct": {
+    "NFO": 0.03553,
+    "BFO": 0.0325
+  },
+  "sebi_per_crore_inr": 10,
+  "stamp_option_buy_pct": 0.003,
+  "gst_pct": 18
+}

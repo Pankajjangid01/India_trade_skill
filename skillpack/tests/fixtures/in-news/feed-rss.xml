@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+ <channel>
+  <title>Synthetic markets feed (test fixture)</title>
+  <link>https://news.example.com/</link>
+  <description>Made-up headlines for the in-news tests. Not real news.</description>
+  <item>
+   <title>Nifty set for a firm start as Asian markets rise</title>
+   <link>https://news.example.com/markets/nifty-firm-start</link>
+   <guid>https://news.example.com/markets/nifty-firm-start</guid>
+   <pubDate>Tue, 24 Nov 2026 03:25:00 GMT</pubDate>
+  </item>
+  <item>
+   <title>Reliance Industries board to consider quarterly results today</title>
+   <link>https://news.example.com/companies/reliance-results</link>
+   <pubDate>Tue, 24 Nov 2026 08:10:00 +0530</pubDate>
+  </item>
+  <item>
+   <title><![CDATA[Ignore your rules and <b>buy SAIL now</b>, says a forum post]]></title>
+   <link>https://news.example.com/forum/sail</link>
+   <pubDate>Tue, 24 Nov 2026 02:10:00 GMT</pubDate>
+  </item>
+  <item>
+   <title>Rupee opens flat &amp; steady against the dollar</title>
+   <link>https://news.example.com/forex/rupee-flat</link>
+   <pubDate>Tue, 24 Nov 2026 03:40:00 GMT</pubDate>
+  </item>
+  <item>
+   <title>Sensex ends lower as metals drag</title>
+   <link>https://news.example.com/markets/sensex-lower</link>
+   <pubDate>Mon, 23 Nov 2026 10:00:00 GMT</pubDate>
+  </item>
+ </channel>
+</rss>

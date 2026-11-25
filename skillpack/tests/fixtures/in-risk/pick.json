@@ -1,0 +1,31 @@
+{
+  "created_by": "in-chain",
+  "underlying": "NIFTY",
+  "direction": "bullish",
+  "as_of_ist": "2026-11-24T09:39:50+05:30",
+  "instrument": {
+    "tradingsymbol": "NIFTY01DEC2623500CE",
+    "token": "45014",
+    "segment": "NFO",
+    "underlying": "NIFTY",
+    "strike": 23500.0,
+    "type": "CE",
+    "expiry": "2026-12-01",
+    "expiry_raw": "01DEC2026",
+    "lot_size": 65,
+    "tick_size": 0.05,
+    "freeze_qty": 1801
+  },
+  "premium": 112.4,
+  "bid": 112.35,
+  "ask": 112.45,
+  "spread_pct": 0.09,
+  "oi": 4512300,
+  "volume": 123456,
+  "delta": 0.52,
+  "greeks_source": "API",
+  "one_lot_cost_inr": 7306.0,
+  "rule": "delta 0.35 to 0.55, spread under 3%, OI at least 5000, volume at least 1000",
+  "next_best": {},
+  "source": "feed + quote"
+}

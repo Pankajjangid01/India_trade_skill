@@ -1,0 +1,12 @@
+{
+  "verified": false,
+  "as_of": null,
+  "source": "Build-time understanding of Angel One's F&O option charges, not verified. in-setup probe compares these with the broker's estimateCharges API; check Angel One's charges page, then set verified, as_of and source yourself.",
+  "brokerage_per_order_inr": 20,
+  "stt_option_sell_pct": 0.15,
+  "stt_note": "Budget 2026 raised STT on the sale of an option premium from 0.10% to 0.15%; the effective date is not confirmed",
+  "exchange_txn_pct": {"NFO": 0.03503, "BFO": 0.0325},
+  "sebi_per_crore_inr": 10,
+  "stamp_option_buy_pct": 0.003,
+  "gst_pct": 18
+}

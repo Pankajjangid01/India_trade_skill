@@ -1,0 +1,156 @@
+{
+ "status": 200,
+ "headers": {
+  "Date": "Tue, 24 Nov 2026 03:50:00 GMT"
+ },
+ "body": {
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": {
+   "fetched": [
+    {
+     "exchange": "NSE",
+     "tradingSymbol": "Nifty 50",
+     "symbolToken": "99926000",
+     "ltp": 23512.0,
+     "open": 23413.0,
+     "high": 23512.0,
+     "low": 23413.0,
+     "close": 23413.0,
+     "lastTradeQty": 1,
+     "exchFeedTime": "24-Nov-2026 09:19:59",
+     "exchTradeTime": "24-Nov-2026 09:19:59",
+     "netChange": 99.0,
+     "percentChange": 0.42,
+     "avgPrice": 23512.0,
+     "tradeVolume": 0,
+     "opnInterest": 0,
+     "lowerCircuit": 0.0,
+     "upperCircuit": 0.0,
+     "totBuyQuan": 0,
+     "totSellQuan": 0,
+     "52WeekLow": 0.0,
+     "52WeekHigh": 0.0,
+     "depth": {
+      "buy": [],
+      "sell": []
+     }
+    },
+    {
+     "exchange": "NSE",
+     "tradingSymbol": "Nifty Bank",
+     "symbolToken": "99926009",
+     "ltp": 52138.0,
+     "open": 52300.0,
+     "high": 52300.0,
+     "low": 52138.0,
+     "close": 52300.0,
+     "lastTradeQty": 1,
+     "exchFeedTime": "24-Nov-2026 09:19:59",
+     "exchTradeTime": "24-Nov-2026 09:19:59",
+     "netChange": -162.0,
+     "percentChange": -0.31,
+     "avgPrice": 52138.0,
+     "tradeVolume": 0,
+     "opnInterest": 0,
+     "lowerCircuit": 0.0,
+     "upperCircuit": 0.0,
+     "totBuyQuan": 0,
+     "totSellQuan": 0,
+     "52WeekLow": 0.0,
+     "52WeekHigh": 0.0,
+     "depth": {
+      "buy": [],
+      "sell": []
+     }
+    },
+    {
+     "exchange": "NSE",
+     "tradingSymbol": "RELIANCE-EQ",
+     "symbolToken": "2885",
+     "ltp": 1520.0,
+     "open": 1500.0,
+     "high": 1520.0,
+     "low": 1500.0,
+     "close": 1500.0,
+     "lastTradeQty": 1,
+     "exchFeedTime": "24-Nov-2026 09:19:59",
+     "exchTradeTime": "24-Nov-2026 09:19:59",
+     "netChange": 20.0,
+     "percentChange": 1.33,
+     "avgPrice": 1520.0,
+     "tradeVolume": 0,
+     "opnInterest": 0,
+     "lowerCircuit": 1350.0,
+     "upperCircuit": 1530.0,
+     "totBuyQuan": 0,
+     "totSellQuan": 0,
+     "52WeekLow": 0.0,
+     "52WeekHigh": 0.0,
+     "depth": {
+      "buy": [],
+      "sell": []
+     }
+    },
+    {
+     "exchange": "NSE",
+     "tradingSymbol": "SAIL-EQ",
+     "symbolToken": "2963",
+     "ltp": 128.5,
+     "open": 131.0,
+     "high": 131.0,
+     "low": 128.5,
+     "close": 131.0,
+     "lastTradeQty": 1,
+     "exchFeedTime": "24-Nov-2026 09:19:59",
+     "exchTradeTime": "24-Nov-2026 09:19:59",
+     "netChange": -2.5,
+     "percentChange": -1.91,
+     "avgPrice": 128.5,
+     "tradeVolume": 0,
+     "opnInterest": 0,
+     "lowerCircuit": 117.9,
+     "upperCircuit": 144.1,
+     "totBuyQuan": 0,
+     "totSellQuan": 0,
+     "52WeekLow": 0.0,
+     "52WeekHigh": 0.0,
+     "depth": {
+      "buy": [],
+      "sell": []
+     }
+    },
+    {
+     "exchange": "NSE",
+     "tradingSymbol": "TEST CUE",
+     "symbolToken": "99999001",
+     "ltp": 13.2,
+     "open": 13.8,
+     "high": 13.8,
+     "low": 13.2,
+     "close": 13.8,
+     "lastTradeQty": 1,
+     "exchFeedTime": "24-Nov-2026 09:19:59",
+     "exchTradeTime": "24-Nov-2026 09:19:59",
+     "netChange": -0.6,
+     "percentChange": -4.35,
+     "avgPrice": 13.2,
+     "tradeVolume": 0,
+     "opnInterest": 0,
+     "lowerCircuit": 0.0,
+     "upperCircuit": 0.0,
+     "totBuyQuan": 0,
+     "totSellQuan": 0,
+     "52WeekLow": 0.0,
+     "52WeekHigh": 0.0,
+     "depth": {
+      "buy": [],
+      "sell": []
+     }
+    }
+   ],
+   "unfetched": []
+  }
+ }
+}

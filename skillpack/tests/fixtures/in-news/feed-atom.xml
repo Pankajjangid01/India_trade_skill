@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+ <title>Synthetic wire (test fixture)</title>
+ <id>https://wire.example.org/</id>
+ <updated>2026-11-24T09:05:00+05:30</updated>
+ <entry>
+  <title>Bank Nifty slips as lenders weigh on the index</title>
+  <link rel="alternate" href="https://wire.example.org/bank-nifty-slips"/>
+  <id>https://wire.example.org/bank-nifty-slips</id>
+  <updated>2026-11-24T09:05:00+05:30</updated>
+ </entry>
+ <entry>
+  <title>Nifty set for a firm start as Asian markets rise</title>
+  <link rel="alternate" href="https://wire.example.org/nifty-firm"/>
+  <id>https://wire.example.org/nifty-firm</id>
+  <updated>2026-11-24T03:20:00Z</updated>
+ </entry>
+ <entry>
+  <title>SAIL statement with no date</title>
+  <link rel="alternate" href="https://wire.example.org/sail-undated"/>
+  <id>https://wire.example.org/sail-undated</id>
+ </entry>
+</feed>

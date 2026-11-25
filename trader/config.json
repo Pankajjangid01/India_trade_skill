@@ -1,0 +1,78 @@
+{
+  "account": {
+    "capital_inr": 500000.0,
+    "risk_per_trade_pct": 1.0,
+    "max_daily_loss_pct": 2.0,
+    "max_trades_per_day": 3,
+    "max_consecutive_losses": 3,
+    "max_capital_per_trade_pct": 30.0
+  },
+  "api": {
+    "client_public_ip": "auto",
+    "risk_free_rate_pct": 6.5
+  },
+  "session": {
+    "entry_start": "09:30",
+    "entry_end": "14:00",
+    "flat_by": "15:10",
+    "expiry_day_flat_by": "14:45",
+    "expiry_day_last_entry": "14:00"
+  },
+  "options": {
+    "strikes_each_side": 15,
+    "delta_min": 0.35,
+    "delta_max": 0.55,
+    "max_spread_pct": 3.0,
+    "min_oi": 5000,
+    "min_volume": 1000
+  },
+  "exit": {
+    "max_premium_loss_pct": 30.0,
+    "target_r": 2.0,
+    "no_progress_bars": 6
+  },
+  "limits": {
+    "candle_per_sec": 1,
+    "candle_per_min": 28,
+    "candle_per_hour": 1400,
+    "quote_per_sec": 1,
+    "quote_tokens_per_call": 50,
+    "greeks_min_gap_sec": 2,
+    "ws_connections": 1,
+    "ws_max_tokens": 900
+  },
+  "freshness": {
+    "stale_tick_sec": 3,
+    "stale_after_intervals": 2,
+    "chain_ttl_sec": 10
+  },
+  "scanner": {
+    "min_price": 50,
+    "min_avg_volume": 100000,
+    "max_spread_pct": 0.5
+  },
+  "news": {
+    "rss": [],
+    "aliases": {},
+    "price_band_pct": 1.0,
+    "global_cues": []
+  },
+  "entry": {
+    "gap_pct": 1.0,
+    "min_volume_ratio": 1.0
+  },
+  "risk": {
+    "block_event_kinds": [
+      "rbi",
+      "budget",
+      "election"
+    ]
+  },
+  "timemachine": {
+    "max_gap_pct": 15
+  },
+  "flows": {
+    "urls": [],
+    "aliases": {}
+  }
+}

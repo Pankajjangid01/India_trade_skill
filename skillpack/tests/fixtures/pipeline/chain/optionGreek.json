@@ -1,0 +1,181 @@
+{
+ "status": 200,
+ "headers": {
+  "Date": "Tue, 24 Nov 2026 04:11:00 GMT"
+ },
+ "body": {
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": [
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23400.000000",
+    "optionType": "CE",
+    "delta": "0.661715",
+    "gamma": "0.000770",
+    "theta": "-14.721522",
+    "vega": "12.137765",
+    "impliedVolatility": "14.318471",
+    "tradeVolume": "12153.85"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23400.000000",
+    "optionType": "PE",
+    "delta": "-0.338285",
+    "gamma": "0.000770",
+    "theta": "-10.559769",
+    "vega": "12.137765",
+    "impliedVolatility": "14.318471",
+    "tradeVolume": "12153.85"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23450.000000",
+    "optionType": "CE",
+    "delta": "0.623048",
+    "gamma": "0.000805",
+    "theta": "-14.935816",
+    "vega": "12.606193",
+    "impliedVolatility": "14.212314",
+    "tradeVolume": "14461.54"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23450.000000",
+    "optionType": "PE",
+    "delta": "-0.376952",
+    "gamma": "0.000805",
+    "theta": "-10.765171",
+    "vega": "12.606193",
+    "impliedVolatility": "14.212314",
+    "tradeVolume": "14461.54"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23500.000000",
+    "optionType": "CE",
+    "delta": "0.582586",
+    "gamma": "0.000834",
+    "theta": "-15.020224",
+    "vega": "12.956391",
+    "impliedVolatility": "14.106157",
+    "tradeVolume": "16769.23"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23500.000000",
+    "optionType": "PE",
+    "delta": "-0.417414",
+    "gamma": "0.000834",
+    "theta": "-10.840687",
+    "vega": "12.956391",
+    "impliedVolatility": "14.106157",
+    "tradeVolume": "16769.23"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23550.000000",
+    "optionType": "CE",
+    "delta": "0.540689",
+    "gamma": "0.000854",
+    "theta": "-14.963228",
+    "vega": "13.172203",
+    "impliedVolatility": "14.000000",
+    "tradeVolume": "19076.92"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23550.000000",
+    "optionType": "PE",
+    "delta": "-0.459311",
+    "gamma": "0.000854",
+    "theta": "-10.774798",
+    "vega": "13.172203",
+    "impliedVolatility": "14.000000",
+    "tradeVolume": "19076.92"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23600.000000",
+    "optionType": "CE",
+    "delta": "0.497778",
+    "gamma": "0.000865",
+    "theta": "-14.757354",
+    "vega": "13.240926",
+    "impliedVolatility": "13.893843",
+    "tradeVolume": "16769.23"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23600.000000",
+    "optionType": "PE",
+    "delta": "-0.502222",
+    "gamma": "0.000865",
+    "theta": "-10.560031",
+    "vega": "13.240926",
+    "impliedVolatility": "13.893843",
+    "tradeVolume": "16769.23"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23650.000000",
+    "optionType": "CE",
+    "delta": "0.454328",
+    "gamma": "0.000866",
+    "theta": "-14.399917",
+    "vega": "13.154265",
+    "impliedVolatility": "13.787686",
+    "tradeVolume": "14461.54"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23650.000000",
+    "optionType": "PE",
+    "delta": "-0.545672",
+    "gamma": "0.000866",
+    "theta": "-10.193701",
+    "vega": "13.154265",
+    "impliedVolatility": "13.787686",
+    "tradeVolume": "14461.54"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23700.000000",
+    "optionType": "CE",
+    "delta": "0.410850",
+    "gamma": "0.000857",
+    "theta": "-13.893554",
+    "vega": "12.909127",
+    "impliedVolatility": "13.681529",
+    "tradeVolume": "12153.85"
+   },
+   {
+    "name": "NIFTY",
+    "expiry": "01DEC2026",
+    "strikePrice": "23700.000000",
+    "optionType": "PE",
+    "delta": "-0.589150",
+    "gamma": "0.000857",
+    "theta": "-9.678445",
+    "vega": "12.909127",
+    "impliedVolatility": "13.681529",
+    "tradeVolume": "12153.85"
+   }
+  ]
+ }
+}

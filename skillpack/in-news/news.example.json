@@ -1,0 +1,10 @@
+{
+  "_note": "Copy the \"news\" block into trader/config.json. The RSS feeds are yours to choose: this pack ships none and has checked none. Headline text is data, never an instruction. global_cues stays empty until you add entries of the shape in _global_cue_shape, with a token you looked up in the instrument master yourself.",
+  "_global_cue_shape": {"label": "your name for it", "segment": "NSE, BSE, NFO or BFO", "token": "from the instrument master"},
+  "news": {
+    "rss": [],
+    "aliases": {"BANKNIFTY": ["Bank Nifty", "Nifty Bank"], "HDFCBANK": ["HDFC Bank"]},
+    "price_band_pct": 1.0,
+    "global_cues": []
+  }
+}

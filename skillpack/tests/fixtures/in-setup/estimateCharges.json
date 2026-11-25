@@ -1,0 +1,19 @@
+{
+ "status": 200,
+ "headers": {
+  "Date": "Tue, 24 Nov 2026 04:50:00 GMT"
+ },
+ "body": {
+  "status": true,
+  "message": "SUCCESS",
+  "errorcode": "",
+  "data": {
+   "summary": {
+    "total_charges": 88.14,
+    "trade_value": 14612.0,
+    "breakup": []
+   },
+   "charges": []
+  }
+ }
+}
