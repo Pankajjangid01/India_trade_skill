@@ -13,8 +13,8 @@ from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
-# Project root (backend/app/skillpack -> indian-day-trader)
-PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+# Project root (backend/app/skillpack/runner.py -> indian-day-trader)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 
 IST_OFFSET = datetime.timedelta(hours=5, minutes=30)
 IST = datetime.timezone(IST_OFFSET, "IST")
@@ -243,12 +243,57 @@ class AutoTrader:
             try:
                 if _is_market_hours():
                     await self._run_pipeline()
+                    await self._track_positions()
                 await asyncio.sleep(30)
             except asyncio.CancelledError:
                 break
             except Exception as e:
                 logger.error(f"AutoTrader loop error: {e}")
                 await asyncio.sleep(30)
+
+    async def _track_positions(self):
+        """Fetch live LTP for open positions and check SL/Target hits."""
+        if not self.paper_positions:
+            return
+        try:
+            sys.path.insert(0, str(PROJECT_ROOT / "skillpack" / "in-common"))
+            import smart
+            from smart import credentials, Session
+            from datetime import datetime
+
+            creds = credentials()
+            client = smart.Client(creds["api_key"])
+            sess = Session(
+                client, creds,
+                str(PROJECT_ROOT / "trader" / "state" / "session.json"),
+                datetime.now().strftime("%Y-%m-%d")
+            )
+            sess.start()
+
+            tokens = [p["token"] for p in self.paper_positions if p["status"] == "PAPER_ACTIVE"]
+            if not tokens:
+                return
+
+            r = client.call("quote", {"mode": "LTP", "exchangeTokens": {"NFO": tokens}}, retry=False)
+            if not r.ok:
+                logger.error(f"Live quote failed: {r.summary()}")
+                return
+
+            d = r.data or {}
+            fetched = d.get("fetched") or []
+            ltp_map = {f.get("symbolToken"): f.get("ltp") for f in fetched}
+
+            underlying_ltp = None
+            for pos in self.paper_positions:
+                if pos["status"] != "PAPER_ACTIVE":
+                    continue
+                token = pos.get("token")
+                ltp = ltp_map.get(token)
+                if ltp is None:
+                    continue
+                self.update_position_from_tick(pos["symbol"], float(ltp), underlying_ltp)
+        except Exception as e:
+            logger.error(f"Position tracking error: {e}")
 
     async def _run_pipeline(self):
         now = _now_ist()
@@ -445,6 +490,17 @@ class AutoTrader:
 
         logger.info(f"POSITION CLOSED: {pos['id']} {reason} PnL={pnl}")
         asyncio.create_task(self._broadcast("position_closed", pos))
+        self._save_positions_to_file()
+
+    def _save_positions_to_file(self):
+        import json
+        path = os.path.join(self.runner.trader_dir, "state", "positions.json")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        try:
+            with open(path, "w") as f:
+                json.dump(self.paper_positions, f, indent=2)
+        except Exception as e:
+            logger.error(f"Failed to save positions: {e}")
 
     async def _broadcast(self, event: str, data: Any):
         if self.sio:
