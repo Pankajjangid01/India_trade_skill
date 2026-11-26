@@ -92,6 +92,24 @@ STRATEGIES = {
                             "near_pct": 0.1, "min_unwind_pct": 1.0, "min_surge_pct": 5.0, "pcr_bull": 1.1,
                             "pcr_bear": 0.85, "swing_bars": 3, "min_risk_pct": 0.05, "max_risk_pct": 0.6,
                             "target_r": 2.0, "max_trades_per_day": 2}},
+    # standalone, app/lorentzian.py: the original indicator's settings, then the added volume rules, then the
+    # paper trade's own stop (the indicator has none) and limits
+    "LORENTZIAN": {"name": "Machine Learning: Lorentzian Classification",
+                   "defaults": {"enabled": False, "symbols": "NIFTY", "source": "hlc3", "neighbors_count": 8,
+                                "max_bars_back": 2000, "feature_count": 5, "color_compression": 1,
+                                "f1": "RSI", "f1_a": 14, "f1_b": 1, "f2": "WT", "f2_a": 10, "f2_b": 11,
+                                "f3": "CCI", "f3_a": 20, "f3_b": 1, "f4": "ADX", "f4_a": 20, "f4_b": 2,
+                                "f5": "RSI", "f5_a": 9, "f5_b": 1,
+                                "use_volatility_filter": True, "use_regime_filter": True, "regime_threshold": -0.1,
+                                "use_adx_filter": False, "adx_threshold": 20, "use_ema_filter": False,
+                                "ema_period": 200, "use_sma_filter": False, "sma_period": 200,
+                                "use_kernel_filter": True, "show_kernel_estimate": True, "kernel_smoothing": False,
+                                "kernel_lookback": 8, "kernel_relative_weight": 8.0, "kernel_regression_level": 25,
+                                "kernel_lag": 2, "use_dynamic_exits": False, "exit_on_flip": True,
+                                "use_volume_filter": True, "volume_ma_period": 20, "min_rvol": 1.2,
+                                "use_rvol_feature": False, "rvol_feature_period": 20,
+                                "swing_bars": 4, "min_risk_pct": 0.05, "max_risk_pct": 0.6, "target_r": 3.0,
+                                "max_trades_per_day": 3}},
 }
 STOP_METHODS = ("ema", "atr", "swing")
 INDICES = ("NIFTY", "SENSEX", "BANKNIFTY")
@@ -458,10 +476,33 @@ def oi_pcr_evaluate(symbol, date, bars, snaps, s, range_end="09:30"):
     return out, state
 
 
-def evaluate(cfg, symbol, date, prev_bars, bars, range_end="09:30", oi=None):
+# ---------------------------------------------------------------- LORENTZIAN (the model is app/lorentzian.py)
+
+def lorentzian_signals(symbol, date, recs, s):
+    """The paper signals of the indicator's volume-confirmed entries on `date`'s bars. recs: lorentzian.run()
+    records (history first). The stop is lorentzian.stop_for: the indicator itself has none."""
+    from app import lorentzian as L
+    out = []
+    for i, r in enumerate(recs):
+        if r["date"] != date or not (r["confirmed_long"] or r["confirmed_short"]):
+            continue
+        up = bool(r["confirmed_long"])
+        sig = _signal("LORENTZIAN", symbol, date, r, "bullish" if up else "bearish", L.stop_for(recs, i, s, up),
+                      float(s["target_r"]), "Lorentzian %s: prediction %+g from %d neighbors, kernel %s%s" % (
+                          "BUY" if up else "SELL", r["prediction"], r["neighbors"], r["kernel_dir"] or "flat",
+                          ", RVOL %.2f" % r["rvol"] if r["rvol"] is not None else ""))
+        if sig:
+            sig["lorentzian"] = {"prediction": r["prediction"], "neighbors": r["neighbors"], "kernel": r["kernel"],
+                                 "kernel_dir": r["kernel_dir"], "rvol": r["rvol"], "features": r["features"]}
+            out.append(sig)
+    return out
+
+
+def evaluate(cfg, symbol, date, prev_bars, bars, range_end="09:30", oi=None, lc=None):
     """Every enabled strategy's signals for today's closed bars. prev_bars None (the previous day
     could not be fetched) skips EMA_PULLBACK: EMAs seeded on less data would give different signals.
-    oi: OI_PCR's {bar: oi_record} for this symbol today; None skips OI_PCR."""
+    oi: OI_PCR's {bar: oi_record} for this symbol today; None skips OI_PCR. lc: LORENTZIAN's records
+    (app/lorentzian.run over the history and today's bars); None skips it."""
     bars = clean_bars(bars)
     out = []
     s = strategy_cfg(cfg, "ORB")
@@ -476,4 +517,7 @@ def evaluate(cfg, symbol, date, prev_bars, bars, range_end="09:30", oi=None):
     s = strategy_cfg(cfg, "OI_PCR")
     if s["enabled"] and oi is not None and symbol in oi_symbols(s):
         out += oi_pcr_evaluate(symbol, date, bars, oi, s, range_end)[0]
+    s = strategy_cfg(cfg, "LORENTZIAN")
+    if s["enabled"] and lc is not None and symbol in oi_symbols(s):
+        out += lorentzian_signals(symbol, date, lc, s)
     return out

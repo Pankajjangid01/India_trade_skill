@@ -73,8 +73,10 @@ def cost_model(cfg, charges, lots, premiums=None, option_slippage_pct=None):
 
 # ---------------------------------------------------------------- realistic exits
 
-def realistic(t, bars, rule, cost_r, stop_slip_r):
-    """The replayed trade t re-filled realistically on that day's bars, or None when it is skipped."""
+def realistic(t, bars, rule, cost_r, stop_slip_r, exit_after=None):
+    """The replayed trade t re-filled realistically on that day's bars, or None when it is skipped.
+    exit_after: the start (HH:MM) of the bar whose CLOSE exits the trade by the strategy's own rule (LORENTZIAN's
+    indicator exit), unless its stop or target came first."""
     hm = "%02d:%02d" % divmod(T._mins(t["entry_time"]) - 5, 60)
     i = next((k for k, b in enumerate(bars) if b["start_ist"] == hm), None)
     if i is None or i + 1 >= len(bars):
@@ -105,6 +107,9 @@ def realistic(t, bars, rule, cost_r, stop_slip_r):
             elif b["low"] <= target:
                 exit_px, outcome = target, "target"
         if exit_px is not None:
+            break
+        if exit_after is not None and b["start_ist"] >= exit_after:
+            exit_px, outcome = b["close"], "signal_exit"
             break
     if exit_px is None:
         exit_px = last["close"]
@@ -145,7 +150,8 @@ def metrics(trades, risk_inr):
             "gross_profit_inr": rupee(gp), "gross_loss_inr": rupee(gl), "net_inr": rupee(sum(rs)),
             "max_drawdown_inr": rupee(st["worst_drawdown_r"]),
             "monthly_r": monthly, "monthly_inr": {k: rupee(v) for k, v in monthly.items()},
-            "outcomes": {k: sum(1 for t in trades if t["outcome"] == k) for k in ("target", "stop", "gap_stop", "flat_by")}}
+            "outcomes": {k: sum(1 for t in trades if t["outcome"] == k)
+                         for k in ("target", "stop", "gap_stop", "flat_by", "signal_exit")}}
 
 
 def segment_of(dates):

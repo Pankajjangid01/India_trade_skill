@@ -236,6 +236,9 @@ def _sequence(signals, day, bars, s, rule, expiry):
 
 def simulate(symbol, strategy, cfg, window, expiries=()):
     """Replay `strategy` on the window's days and resample: the data part of the verdict."""
+    if strategy == "LORENTZIAN":
+        raise smart.SmartError("LORENTZIAN rebuilds its model every day from 2000 bars of history: it is backtested "
+                               "on its own tab (four volume configurations), not in this replay")
     if strategy == "OI_PCR":
         raise smart.SmartError("OI_PCR needs the option chain's open interest at every bar and Angel One keeps no "
                                "history of it, so it cannot be replayed: its live paper trades are its record")

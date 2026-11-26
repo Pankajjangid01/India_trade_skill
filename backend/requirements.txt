@@ -3,4 +3,5 @@ uvicorn[standard]>=0.27
 pydantic>=2.7,<3
 python-dotenv>=1.0
 python-socketio>=5.9,<6
+numpy>=1.26,<3              # app/lorentzian.py: the neighbor distances
 # the skill pack itself is standard library only

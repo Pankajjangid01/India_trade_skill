@@ -130,6 +130,34 @@ It waits for option writers to give up a level, instead of guessing direction fr
   Its live paper trades build its record. It buys one option (the in-chain pick, delta 0.35–0.55)
   like the others; the debit-spread variant is not modelled.
 
+### LORENTZIAN — Machine Learning: Lorentzian Classification (off by default, own tab)
+A standalone port of jdehorty's TradingView indicator (`backend/app/lorentzian.py`), on closed 5-minute
+bars, with its five features (RSI 14,1 · WaveTrend 10,11 · CCI 20,1 · ADX 20,2 · RSI 9,1), Lorentzian
+distance `Σ ln(1 + |xᵢ − yᵢ|)`, the approximate nearest-neighbor search (k = 8, 2000 bars back), the
+volatility / regime (−0.1) / ADX / EMA 200 / SMA 200 filters, Nadaraya-Watson kernel confirmation
+(8, 8, 25, lag 2) and the fixed 4-bar or dynamic kernel exits. The source's **expressions** are followed
+where its comments differ: the training label is the past 4-bar move inverted (`src[4] < src[0]` → short),
+neighbors are the first `max_bars_back` bars with `i % 4 != 0`, the buffers persist across bars, and the
+"held < 4 bars" exit branch can never fire. Normalization uses the running min/max (no look-ahead); a test
+checks the neighbor search against a line-by-line transcription of the Pine loop.
+- **Data:** every trading day the model is built as if the chart were loaded at the open with exactly
+  2000 closed bars of history (~27 days), then extended bar by bar. The backtest rebuilds it the same way
+  for every day, so live and backtest signals are the same calculation. Source: hlc3.
+- **Volume (added rules, outside the original logic):** index candles have no volume, so it is the
+  near-month index futures' 5-minute volume. RVOL = volume ÷ SMA(volume, 20). The volume filter (on)
+  confirms an entry when RVOL ≥ 1.2 on a futures candle in the trade's direction; an optional sixth ML
+  feature (off) is the normalized RVOL. Rejections are shown with their reason.
+- **Paper trade:** a confirmed entry goes through the same gate, in-chain pick, in-exit, in-budget and
+  in-risk as the others. The indicator has no stop, so the index stop is the 4-bar swing (kept within
+  0.05–0.6% of price) with a 3R target; its own exit (4 bars, or a flip, or the kernel with dynamic exits)
+  closes the trade at that bar's close if the stops have not.
+- **Tab (Lorentzian ML):** prediction score, neighbors, kernel, filtered signal, entry/exit, feature values,
+  every filter's status, volume, a chart coloured by the prediction with the kernel line, and the
+  four-configuration backtest (no volume filter / volume filter / RVOL feature / both) by
+  train-validation-test period. A difference is only called with ≥ 30 trades in each out-of-sample period.
+  The futures contract limits volume history to its listing (~2–3 months).
+- **Speed:** numpy computes the distances (about 2 million bar pairs a day; a day's build takes ~0.6 s).
+
 ### Shared trade rules (all strategies)
 - **Option:** `in-chain pick` — nearest expiry, |delta| 0.35–0.55, spread ≤ 3%, volume and OI
   minimums, one lot within the capital cap. Paper entry at the **ask** (realistic fill).

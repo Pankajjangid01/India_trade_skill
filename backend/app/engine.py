@@ -18,16 +18,18 @@ order: the skill pack has no order function at all.
 import argparse
 import contextlib
 import datetime
+import hashlib
 import io
 import json
 import logging
+import math
 import os
 import subprocess
 import sys
 import threading
 import time
 
-from app import config, paper, research, skills, timemachine
+from app import config, lorentzian, paper, research, skills, timemachine
 from app import strategies as strat
 from app.sp import FEED_SCRIPT, chain, exitplan, firstrun, risk, size, smart, tm
 from app.store import Store
@@ -185,6 +187,7 @@ class Engine:
         self.subscribed = None
         self.tm_window, self.tm_cache, self.master_rows, self.bars = None, {}, None, {}
         self.oi = {}                                    # OI_PCR: {symbol: {bar: oi_record}} for today
+        self.lc, self.lc_job = {}, None                 # LORENTZIAN: {symbol: today's model and view}, the backtest
         self.background, self.news_day, self.next_alerts = skills.Background(), None, 0.0         # in-timemachine: the rolling window store, verdicts by day
         self.status = {"phase": None, "phase_reason": None, "last_cycle_ist": None, "last_error": None,
                        "errors": 0, "started_at": None, "cycles": 0}
@@ -325,7 +328,13 @@ class Engine:
                 log.error("%s has no index row in today's instrument master", s)
                 continue
             exps = f.get("expiries") or []
+            futs = [r for r in rows if r.get("name") == s and r.get("instrumenttype") == "FUTIDX"
+                    and smart.expiry_date(r.get("expiry")) and smart.expiry_date(r["expiry"]) >= now.date()]
+            fut = min(futs, key=lambda r: smart.expiry_date(r["expiry"])) if futs else None
             facts[s] = {"token": str(f["index_token"]), "segment": f["index_segment"],
+                        # LORENTZIAN's volume: index candles have none, the near-month futures have it
+                        "fut": {"token": str(fut["token"]), "segment": smart.segment(fut["exch_seg"]),
+                                "symbol": fut["symbol"], "expiry": str(smart.expiry_date(fut["expiry"]))} if fut else None,
                         "expiry_today": bool(exps) and exps[0][0] == day,
                         "expiries": sorted({str(smart.expiry_date(r.get("expiry"))) for r in rows
                                             if r.get("instrumenttype") == "OPTIDX" and r.get("name") == s
@@ -336,7 +345,7 @@ class Engine:
         del rows
         if self.day != day:
             self.prev_bars, self.prev_close, self.last_eval, self.next_eval = {}, {}, {}, {}
-            self.tm_cache, self.bars, self.oi = {}, {}, {}
+            self.tm_cache, self.bars, self.oi, self.lc = {}, {}, {}, {}
         self.day, self.facts = day, facts
         log.info("instrument master loaded for %s: %s", day,
                  ", ".join("%s token %s" % (s, f["token"]) for s, f in facts.items()))
@@ -348,6 +357,10 @@ class Engine:
         items = [{"segment": self.facts[s]["segment"], "token": self.facts[s]["token"], "mode": "quote"}
                  for s in self.symbols(cfg) if s in self.facts]
         items += [{"segment": t["segment"], "token": t["token"], "mode": "quote"} for t in self.store.open_trades()]
+        lc = strat.strategy_cfg(cfg, "LORENTZIAN")
+        if lc["enabled"]:                                 # the futures' volume, bar by bar, for LORENTZIAN
+            items += [{"segment": f["fut"]["segment"], "token": f["fut"]["token"], "mode": "quote"}
+                      for s, f in self.facts.items() if s in strat.oi_symbols(lc) and f.get("fut")]
         key = sorted((i["segment"], i["token"]) for i in items)
         if key != self.subscribed:
             smart.subscribe(self.trader, "engine", items)
@@ -397,7 +410,7 @@ class Engine:
             ltp, source, age = px.get(self.facts[s]["token"], (None, None, None))
             # every key exists from the start: the UI thread copies this dict while this thread updates it
             m = self.market.setdefault(s, {"symbol": s, "bars_source": None, "bars": 0, "last_bar_ist": None,
-                                           "bars_note": None, "hybrid": None, "oi_pcr": None})
+                                           "bars_note": None, "hybrid": None, "oi_pcr": None, "lorentzian": None})
             prev = self.prev_close.get(s)
             m.update(ltp=ltp, source=source, age_sec=round(age, 1) if age is not None else None,
                      stale=ltp is None or (source == "feed" and age > stale_sec), prev_close=prev,
@@ -485,9 +498,13 @@ class Engine:
             range_end = (cfg.get("session") or {}).get("range_end", "09:30")
             m["hybrid"] = self.hybrid_state(s, prev, bars, cfg)
             m["oi_pcr"] = self.oi_state(s, bars, oi, cfg, range_end)
-            for sig in strat.evaluate(cfg, s, self.day, prev, bars, range_end, oi=oi):
+            lc = self.lc_records(s, bars, now, cfg)
+            m["lorentzian"] = self.lc_summary(s, lc, cfg)
+            for sig in strat.evaluate(cfg, s, self.day, prev, bars, range_end, oi=oi, lc=lc):
                 if not self.store.has_signal(sig["id"]):
                     self.process(sig, cfg)
+            if lc:
+                self.lc_exits(s, lc, smart.now_ist(), cfg)
             if prev is None:                                # EMA_PULLBACK waits for the previous day's bars
                 self.next_eval[s] = time.time() + BAR_RETRY_SEC
             else:
@@ -568,6 +585,228 @@ class Engine:
             out.update(st, decisions=st["decisions"][-6:])
         return out
 
+    # ------------------------------------------------------------ LORENTZIAN
+    def lc_history(self, sym, now, s, cal=None):
+        """The max_bars_back closed 5-minute bars before today, each with its near-month futures bar's volume:
+        the indicator's training data for today (fetched once a day; the candle cache keeps past days)."""
+        cal = cal if cal is not None else (smart.read_json(self.p["calendar"], {}) or {})
+        f = self.facts[sym]
+        n = math.ceil(int(s["max_bars_back"]) / research.FULL_DAY_BARS) + 2
+        w = timemachine.history_window(self.trader, f["segment"], f["token"], self.client, n, now, cal, seed_day=False)
+        idx = {d: w["bars"][d] for d in w["dates"] if w["bars"].get(d)}
+        fut = {}
+        if f.get("fut") and idx:
+            fut, partial = smart.candles(self.client, self.p["cache"], f["fut"]["segment"], f["fut"]["token"],
+                                         "FIVE_MINUTE", datetime.date.fromisoformat(min(idx)),
+                                         datetime.date.fromisoformat(max(idx)), now)
+            if partial:
+                log.warning("LORENTZIAN %s futures history partial: %s", sym, partial)
+        return lorentzian.dataset(idx, fut, now.date().isoformat(), s["max_bars_back"])
+
+    def lc_records(self, sym, bars, now, cfg):
+        """lorentzian.run over the history and today's closed bars (index OHLC, futures volume): one model per index
+        per day, extended bar by bar (a bar already computed is never recomputed unless its data changed).
+        None when LORENTZIAN does not trade sym or its data is unavailable (the other strategies go on)."""
+        s = strat.strategy_cfg(cfg, "LORENTZIAN")
+        if not s["enabled"] or sym not in strat.oi_symbols(s):
+            self.lc.pop(sym, None)
+            return None
+        key = json.dumps([self.day, s], sort_keys=True)
+        st = self.lc.get(sym)
+        try:
+            if st is None or st["key"] != key:
+                st = self.lc[sym] = {"key": key, "hist": self.lc_history(sym, now, s),
+                                     "ann": lorentzian.Ann(s["neighbors_count"], s["max_bars_back"]), "view": None}
+                log.info("LORENTZIAN %s: %d history bars from %s, %d with futures volume", sym, len(st["hist"]),
+                         st["hist"][0]["date"] if st["hist"] else "-", sum(1 for b in st["hist"] if b["volume"]))
+            fut, fb = self.facts[sym].get("fut"), {}
+            if fut:
+                fb = {b["start_ist"]: b for b in smart.day_bars(self.trader, fut["segment"], fut["token"], 5, now,
+                                                               self.client)["bars"]}
+            today = []
+            for b in bars:
+                x = fb.get(b["start_ist"]) or {}
+                today.append({"date": self.day, "start_ist": b["start_ist"], "open": b["open"], "high": b["high"],
+                              "low": b["low"], "close": b["close"], "volume": x.get("volume") or None,
+                              "vol_open": x.get("open"), "vol_close": x.get("close")})
+            recs = lorentzian.run(st["hist"] + today, s, st["ann"])
+        except Exception as e:                  # a broker or data failure never stops the other strategies
+            log.warning("LORENTZIAN %s unavailable: %s: %s", sym, type(e).__name__, e)
+            if st is not None and st.get("key") == key:
+                st["error"] = "%s: %s" % (type(e).__name__, str(e)[:300])
+            else:
+                self.lc.pop(sym, None)
+            return None
+        st["error"] = None
+        st["view"] = self.lc_view_doc(sym, s, st, recs, now)
+        return recs
+
+    def lc_summary(self, sym, recs, cfg):
+        s = strat.strategy_cfg(cfg, "LORENTZIAN")
+        out = {"enabled": bool(s["enabled"]), "traded": recs is not None}
+        if recs:
+            r = recs[-1]
+            out.update(bar=r["start_ist"], prediction=r["prediction"], direction=r["direction"], signal=r["signal"],
+                       kernel_dir=r["kernel_dir"])
+        return out
+
+    def lc_view_doc(self, sym, s, st, recs, now):
+        """The Lorentzian tab's view: the latest bar in full, today's bars (and the 30 before) for the chart,
+        every entry the indicator made today with why it was or was not confirmed."""
+        today = [r for r in recs if r["date"] == self.day]
+        hist = [r for r in recs if r["date"] != self.day]
+        keep = ("date", "start_ist", "open", "high", "low", "close", "prediction", "color", "kernel", "kernel2",
+                "kernel_dir", "signal", "start_long", "start_short", "confirmed_long", "confirmed_short", "end_long",
+                "end_short", "volume", "rvol")
+        dec = []
+        for r in today:
+            for side, flag, why in (("bullish", "start_long", "volume_reject_long"),
+                                    ("bearish", "start_short", "volume_reject_short")):
+                if r[flag]:
+                    dec.append({"bar_start_ist": r["start_ist"], "bar_close_ist": strat.add_min(r["start_ist"], 5),
+                                "direction": side, "accepted": r[why] is None, "prediction": r["prediction"],
+                                "rvol": r["rvol"], "reason": r[why] or ("volume confirmed: RVOL %.2f" % r["rvol"]
+                                                                        if s["use_volume_filter"] else
+                                                                        "volume filter off")})
+        exits = [{"bar_start_ist": r["start_ist"], "direction": "bullish" if r["end_long"] else "bearish",
+                  "mode": r["exit_mode"]} for r in today if r["end_long"] or r["end_short"]]
+        fut = self.facts.get(sym, {}).get("fut") or {}
+        return {"symbol": sym, "as_of_ist": now.isoformat(), "date": self.day, "enabled": True, "traded": True,
+                "settings": s, "feature_names": lorentzian.feature_names(s), "error": st.get("error"),
+                "data": {"history_bars": len(hist), "history_from": hist[0]["date"] if hist else None,
+                         "history_to": hist[-1]["date"] if hist else None,
+                         "history_volume_bars": sum(1 for r in hist if r["volume"]), "today_bars": len(today),
+                         "today_volume_bars": sum(1 for r in today if r["volume"]), "futures": fut.get("symbol"),
+                         "timeframe": "5 minutes, closed bars only"},
+                "latest": recs[-1] if recs else None,
+                "bars": [{k: r[k] for k in keep} for r in recs[-(len(today) + 30):]],
+                "decisions": dec, "exits": exits}
+
+    def lc_view(self, sym, build=False):
+        """The tab's view of sym: the live one, or (build, e.g. after the close) one built now from history and
+        today's closed bars."""
+        cfg = smart.load_config(self.trader)
+        s = strat.strategy_cfg(cfg, "LORENTZIAN")
+        st = self.lc.get(sym) or {}
+        if st.get("view") and not build:
+            return dict(st["view"], error=st.get("error"))
+        base = {"symbol": sym, "enabled": bool(s["enabled"]), "traded": sym in strat.oi_symbols(s), "settings": s,
+                "feature_names": lorentzian.feature_names(s), "latest": None, "bars": [], "decisions": [], "exits": []}
+        if not build:
+            return dict(base, note="no model yet: the engine builds it at the first closed bar of the session, "
+                                   "or press Build now")
+        now = smart.now_ist()
+        cal = smart.read_json(self.p["calendar"], {}) or {}
+        with self.op:
+            if not self.ensure_client(now):
+                raise EngineError("no broker session: %s" % (self.angel.get("last_error") or "login failed"))
+            if sym not in self.facts or self.day != now.date().isoformat():
+                self.ensure_day(now, dict(cfg, paper=dict(cfg.get("paper") or {}, symbols=sorted(
+                    set(self.symbols(cfg)) | {sym}))), cal)
+            if sym not in self.facts:
+                raise EngineError("%s is not in today's instrument master" % sym)
+            f = self.facts[sym]
+            d = smart.day_bars(self.trader, f["segment"], f["token"], 5, now, self.client)
+            one = dict(cfg, strategies=dict(cfg.get("strategies") or {}, LORENTZIAN=dict(s, enabled=True,
+                                                                                    symbols=sym)))
+            recs = self.lc_records(sym, strat.clean_bars(d["bars"]), now, one)
+            if recs is None:
+                raise EngineError((self.lc.get(sym) or {}).get("error") or "the Lorentzian model could not be built")
+            return dict(self.lc[sym]["view"], enabled=bool(s["enabled"]), traded=sym in strat.oi_symbols(s))
+
+    def lc_exits(self, sym, recs, now, cfg):
+        """The indicator's own exit for an open LORENTZIAN trade on sym: the first closed bar after its signal bar
+        with the fixed 4-bar (or dynamic kernel) exit, or the signal flipping (exit_on_flip). The premium and index
+        stops, the target and flat-by keep running in monitor() as for every trade."""
+        s = strat.strategy_cfg(cfg, "LORENTZIAN")
+        at = {(r["date"], r["start_ist"]): i for i, r in enumerate(recs)}
+        for t in self.store.open_trades():
+            if t["strategy"] != "LORENTZIAN" or t["symbol"] != sym:
+                continue
+            part = t["signal_id"].split(":")                 # date:LORENTZIAN:SYMBOL:HH:MM:direction
+            i = at.get((part[0], ":".join(part[3:5])))
+            if i is None:
+                continue
+            j, why = lorentzian.exit_bar(recs, i, t["direction"] == "bullish", s)
+            if j is None:
+                continue
+            price = self.prices({t["segment"]: [t["token"]]}, now).get(t["token"], (None,))[0]
+            if price is None:
+                log.warning("%s %s: the indicator's exit is due (%s) but there is no valid option price yet", t["id"],
+                            t["tradingsymbol"], why)
+                continue
+            log.info("LORENTZIAN exit %s at the %s bar close: %s", t["id"], recs[j]["start_ist"], why)
+            self.close(t, price, why, now)
+
+    def lc_backtest_start(self, symbol, days):
+        """The four volume configurations on symbol's last `days` trading days with futures volume, in a thread."""
+        if self.lc_job and self.lc_job.get("status") == "running":
+            raise EngineError("a Lorentzian backtest is already running (%s of %s days)" % tuple(self.lc_job["progress"]))
+        self.lc_job = {"status": "running", "symbol": symbol, "days": days, "progress": [0, days], "result": None,
+                       "error": None, "started_ist": smart.now_ist().isoformat()}
+        threading.Thread(target=self._lc_backtest, args=(symbol, days), name="lc-backtest", daemon=True).start()
+        return self.lc_job
+
+    def _lc_backtest(self, symbol, days):
+        job = self.lc_job
+        try:
+            cfg0 = smart.load_config(self.trader)
+            s = strat.strategy_cfg(cfg0, "LORENTZIAN")
+            hist_days = math.ceil(int(s["max_bars_back"]) / research.FULL_DAY_BARS) + 2
+            cfg, windows, expiries, costs, risk_inr, now = self.research_inputs(days + hist_days, [symbol])
+            f, client = self.facts[symbol], self.client
+            w = windows[symbol]
+            idx = {d: w["bars"][d] for d in w["dates"] if w["bars"].get(d)}
+            fut = {}
+            if f.get("fut") and idx:
+                fut, _ = smart.candles(client, self.p["cache"], f["fut"]["segment"], f["fut"]["token"], "FIVE_MINUTE",
+                                       datetime.date.fromisoformat(min(idx)), datetime.date.fromisoformat(max(idx)),
+                                       now)
+            fvol = {d: sum(1 for r in fut.get(d) or [] if len(r) > 5 and r[5]) for d in idx}
+            dates = sorted(idx)
+            with_vol = [d for d in dates[hist_days - 1:] if fvol[d] >= 0.9 * len(idx[d])]
+            test = with_vol[-days:]
+            job["progress"] = [0, len(test)]
+            folder = os.path.join(self.p["state"], "lorentzian", "backtest", symbol)
+            os.makedirs(folder, exist_ok=True)
+
+            def model(d, bars, ss):                       # one day's model, cached on its data and settings
+                h = hashlib.sha1(json.dumps([ss, bars], sort_keys=True, default=str).encode()).hexdigest()[:16]
+                path = os.path.join(folder, "%s_%s.json" % (d, h))
+                got = smart.read_json(path)
+                if got is None:
+                    recs = lorentzian.run(bars, ss)
+                    first = next(i for i, r in enumerate(recs) if r["date"] == d)
+                    keep = ("date", "start_ist", "open", "high", "low", "close", "start_long", "start_short",
+                            "confirmed_long", "confirmed_short", "end_long", "end_short", "exit_mode", "signal",
+                            "signal_change")
+                    got = [{k: r[k] for k in keep} for r in recs[max(0, first - 10):]]
+                    smart.write_json(path, got)
+                return got
+
+            def progress(n, total):
+                job["progress"] = [n, total]
+
+            rule = timemachine._rule(cfg, s)
+            acct = int((cfg.get("account") or {}).get("max_trades_per_day", 3))
+            res = lorentzian.compare([(d, lorentzian.dataset(idx, fut, d, s["max_bars_back"])) for d in test], s,
+                                     rule, costs[symbol]["cost_r"], research.DEFAULTS["stop_slippage_r"], risk_inr,
+                                     min(int(s["max_trades_per_day"]), acct), set(expiries[symbol]), symbol,
+                                     model=model, progress=progress)
+            res.update(symbol=symbol, days_asked=days, days_used=len(test), as_of_ist=now.isoformat(),
+                       futures=(f.get("fut") or {}).get("symbol"), costs=costs[symbol], risk_inr=risk_inr, rule=rule,
+                       settings=s, history_bars=int(s["max_bars_back"]),
+                       coverage={"index_days": len(dates), "first_day": dates[0] if dates else None,
+                                 "days_with_futures_volume": len(with_vol),
+                                 "excluded_no_volume": [d for d in dates[hist_days - 1:] if d not in with_vol]},
+                       note="Index moves in R with option charges and slippage estimated in R (research.cost_model), "
+                            "entries at the next bar's open, the stop checked before the target. Volume is the "
+                            "near-month futures'; days without it are left out for every configuration alike.")
+            job.update(status="done", result=research.finite(res), finished_ist=smart.now_ist().isoformat())
+        except Exception as e:
+            log.exception("Lorentzian backtest failed")
+            job.update(status="error", error="%s: %s" % (type(e).__name__, str(e)[:400]))
+
     def previous_day_bars(self, s, now):
         if s not in self.prev_bars:
             cal = smart.read_json(self.p["calendar"], {}) or {}
@@ -605,7 +844,7 @@ class Engine:
                "underlying_ltp": (self.market.get(sig["symbol"]) or {}).get("ltp"),
                "auto_execute": (cfg.get("paper") or {}).get("auto_execute", True), "s": s}
         status, reason = paper.gate(sig, now, cfg, ctx)
-        meta = {"oi": sig["oi"]} if sig.get("oi") else None      # OI_PCR's evidence: wall, OI shift, PCR
+        meta = {k: sig[k] for k in ("oi", "lorentzian") if sig.get(k)} or None   # each strategy's own evidence
         if status in ("EXECUTE", "EXECUTABLE") and timemachine.settings(cfg)["enabled"] and \
                 not self.store.has_signal(sig["id"]):
             doc = self.timemachine_verdict(sig["symbol"], sig["strategy"], now, cfg)
@@ -653,7 +892,7 @@ class Engine:
 
     def _execute_picked(self, sig, now, cfg, s, rc, text):
         sym, side = sig["symbol"], sig["direction"]
-        meta = {k: sig[k] for k in ("timemachine", "oi") if sig.get(k)}
+        meta = {k: sig[k] for k in ("timemachine", "oi", "lorentzian") if sig.get(k)}
         if rc != 0:
             return self._reject(sig, "no option passed the pick rules: %s" % (text[-1] if text else "in-chain refused"),
                                 meta or None)

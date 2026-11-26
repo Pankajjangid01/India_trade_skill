@@ -53,5 +53,8 @@ export const api = {
   backtest: (body: { symbol: string; strategy: string; days: number; overrides: Record<string, unknown> }) =>
     call<any>("POST", "/backtest", body),
   compare: (body: Record<string, unknown>) => call<any>("POST", "/backtest/compare", body),
+  lorentzian: (symbol: string, build = false) => call<any>("GET", `/lorentzian/${symbol}${build ? "?build=true" : ""}`),
+  lcBacktestStart: (symbol: string, days: number) => call<any>("POST", "/lorentzian/backtest", { symbol, days }),
+  lcBacktest: () => call<any>("GET", "/lorentzian/backtest"),
   sweep: (body: Record<string, unknown>) => call<any>("POST", "/backtest/sweep", body),
 };

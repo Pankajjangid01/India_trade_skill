@@ -27,7 +27,7 @@ _fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(messag
 logging.getLogger().addHandler(_fh)
 log = logging.getLogger("backend")
 
-from app import skills  # noqa: E402
+from app import lorentzian, research, skills  # noqa: E402
 from app.engine import EngineError, engine  # noqa: E402
 from app.sp import smart  # noqa: E402
 from app.strategies import INDICES, STOP_METHODS, STRATEGIES, ZERO_OK, strategy_cfg  # noqa: E402
@@ -212,7 +212,11 @@ def clean_strategy(key, vals):
             v = want(v) if want is not bool else bool(v)
         except (TypeError, ValueError):
             raise HTTPException(422, "%s.%s must be %s" % (key, k, want.__name__))
-        if want in (int, float) and (v < 0 if k in ZERO_OK else v <= 0):
+        lim = lorentzian.RANGES.get(k) if key == "LORENTZIAN" else None
+        if lim:
+            if not lim[0] <= v <= lim[1]:
+                raise HTTPException(422, "%s.%s must be %g to %g" % (key, k, lim[0], lim[1]))
+        elif want in (int, float) and (v < 0 if k in ZERO_OK else v <= 0):
             raise HTTPException(422, "%s.%s must be %s 0" % (key, k, "at least" if k in ZERO_OK else "above"))
         if k == "stop_method" and v not in STOP_METHODS:
             raise HTTPException(422, "%s.stop_method must be one of %s" % (key, ", ".join(STOP_METHODS)))
@@ -220,6 +224,10 @@ def clean_strategy(key, vals):
             raise HTTPException(422, "%s.start_after must be HH:MM" % key)
         if k == "stop_rule" and v not in ("or-mid", "or-opposite"):
             raise HTTPException(422, "%s.stop_rule must be or-mid or or-opposite" % key)
+        if key == "LORENTZIAN" and k in lorentzian.CHOICES:
+            v = v.strip().lower() if k == "source" else v.strip().upper()
+            if v not in lorentzian.CHOICES[k]:
+                raise HTTPException(422, "%s.%s must be one of %s" % (key, k, ", ".join(lorentzian.CHOICES[k])))
         if k == "symbols":
             names = [x.strip().upper() for x in v.split(",") if x.strip()]
             if not names or any(x not in INDICES for x in names):
@@ -249,6 +257,10 @@ async def post_settings(body: SettingsIn):
         for key, vals in (body.strategies or {}).items():
             clean = clean_strategy(key, vals)
             cfg.setdefault("strategies", {})[key] = {**(cfg["strategies"].get(key) or {}), **clean}
+        lc = strategy_cfg(cfg, "LORENTZIAN")
+        if int(lc["kernel_lag"]) >= int(lc["kernel_lookback"]):
+            raise HTTPException(422, "LORENTZIAN.kernel_lag must be below kernel_lookback (the Gaussian kernel's "
+                                     "lookback is kernel_lookback - kernel_lag)")
         smart.write_json(path, cfg)
     log.info("settings updated: %s", ", ".join(k for k, v in body.model_dump(exclude_none=True).items() if v))
     return settings_view(cfg)
@@ -303,6 +315,37 @@ async def timemachine_last(symbol: str, strategy: str):
     if doc is None:
         raise HTTPException(404, "no verdict yet: one is made at the first signal of the day")
     return doc
+
+
+class LcBacktestIn(BaseModel):
+    symbol: str = Field("NIFTY", pattern=r"^(NIFTY|SENSEX|BANKNIFTY)$")
+    days: int = Field(40, ge=10, le=120)
+
+
+# the backtest routes before /lorentzian/{symbol}: FastAPI matches in order
+@api.post("/api/v1/lorentzian/backtest")
+async def lc_backtest_start(body: LcBacktestIn):
+    """Starts the four-configuration comparison in the background; GET the same path for its progress and result."""
+    try:
+        return engine.lc_backtest_start(body.symbol, body.days)
+    except EngineError as e:
+        raise HTTPException(409, str(e))
+
+
+@api.get("/api/v1/lorentzian/backtest")
+async def lc_backtest_status():
+    return engine.lc_job or {"status": "idle"}
+
+
+@api.get("/api/v1/lorentzian/{symbol}")
+async def lorentzian_view(symbol: str, build: bool = False):
+    """The Lorentzian tab: the live model's latest bar, today's bars and decisions; build=true builds it now."""
+    if symbol.upper() not in INDICES:
+        raise HTTPException(404, "unknown index %s" % symbol)
+    try:
+        return research.finite(await run_in_threadpool(engine.lc_view, symbol.upper(), build))
+    except EngineError as e:
+        raise HTTPException(409, str(e))
 
 
 class BacktestIn(BaseModel):
