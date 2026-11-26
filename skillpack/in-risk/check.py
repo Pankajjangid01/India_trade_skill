@@ -174,6 +174,25 @@ def checks(o, x):
         lag = max(t["lag_ms"] for t in feed.values())
         add("stale_data", fresh, "%s (limit %g s); feed lag %d ms" % (", ".join(parts), stale_sec, lag))
 
+    # the signal must still stand: a trigger the market has already reversed through the stop, or one past
+    # the plan's own no-progress deadline without progress, is not an entry any more
+    last = ((feed or {}).get(und and str(und["token"])) or {}).get("ltp")
+    stop, base, up = o.get("underlying_stop"), o.get("entry_underlying"), o.get("direction") == "bullish"
+    gone = []
+    if last is not None and stop is not None and (last <= stop if up else last >= stop):
+        gone.append("%s %s is already %s the stop %s" % (name, "{:,.2f}".format(last),
+                                                         "at or below" if up else "at or above", "{:,.2f}".format(stop)))
+    entry, bars_n = x.get("entry") or {}, o.get("no_progress_bars")
+    if bars_n and entry.get("bar_close_ist") and entry.get("date") == today.isoformat() and base is not None:
+        due = smart.parse_ist("%s %s" % (entry["date"], entry["bar_close_ist"])) + datetime.timedelta(minutes=5 * int(bars_n))
+        moved = last is not None and (last > base if up else last < base)
+        if now >= due and not moved:
+            gone.append("the plan's no-progress deadline %s has passed (trigger closed %s at %s)"
+                        % (due.strftime("%H:%M"), entry["bar_close_ist"], "{:,.2f}".format(base)))
+    add("signal_valid", not gone, "; ".join(gone) or (
+        "%s %s, the stop %s not reached" % (name, "{:,.2f}".format(last), "{:,.2f}".format(stop))
+        if last is not None and stop is not None else "no live underlying price: the stop could not be compared"))
+
     kinds = (cfg.get("risk") or {}).get("block_event_kinds", BLOCK_EVENT_KINDS)
     if x["events"] is None:
         add("event_day", True, "no trader/events.json: no events to check")
@@ -284,6 +303,7 @@ def main(argv=None):
         x = {"cfg": cfg, "capital": capital, "now": now, "calendar": smart.read_json(p["calendar"], {}) or {},
              "trades": (smart.read_json(p["journal"]) or {}).get("trades", []), "ban": ban_list(p["ban"]),
              "events": None if events is None else events.get("events", []), "pick": smart.read_json(p["pick"]),
+             "entry": smart.read_json(p["entry"]),
              "db": p["db"], "rows": rows,
              "master": {(smart.segment(r.get("exch_seg")), str(r.get("token"))): r for r in rows}}
         results = {o["ticket_id"]: verdict(o, x) for o in todo}

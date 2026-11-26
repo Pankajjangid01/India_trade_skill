@@ -1,42 +1,43 @@
 import { io, Socket } from "socket.io-client";
+import { useTraderStore } from "../store/useTraderStore";
+import { BACKEND, token } from "./api";
 
 let socket: Socket | null = null;
 
-export const connectSocket = (onMessage: (data: any) => void) => {
+// One connection for the whole app, reconnecting forever. The token goes in the handshake, not the URL.
+export function connectSocket() {
   if (socket) return socket;
-  socket = io("http://localhost:8000", {
+  const s = useTraderStore.getState();
+  socket = io(BACKEND || undefined, {
     path: "/ws",
+    auth: (cb) => cb({ token: token.get() }),
     transports: ["websocket", "polling"],
-    autoConnect: true,
     reconnection: true,
-    reconnectionAttempts: 5,
-    reconnectionDelay: 1000,
+    reconnectionDelayMax: 5000,
   });
   socket.on("connect", () => {
-    onMessage({ event: "connect", data: null });
+    s.setSocket("connected");
+    s.setLocked(false);
   });
-  socket.on("disconnect", () => {
-    onMessage({ event: "disconnect", data: null });
+  socket.on("disconnect", () => s.setSocket("disconnected"));
+  socket.on("connect_error", (err) => {
+    s.setSocket("disconnected");
+    if (err.message === "unauthorized") s.setLocked(true); // refused: Socket.IO does not retry this on its own
   });
-  socket.on("connect_error", (err: any) => {
-    console.error("Socket connect error:", err.message);
-    onMessage({ event: "connect_error", data: err.message });
-  });
-  socket.on("state", (data: any) => onMessage({ event: "state", data }));
-  socket.on("signal_update", (data: any) => onMessage({ event: "signal_update", data }));
-  socket.on("scan_update", (data: any) => onMessage({ event: "scan_update", data }));
-  socket.on("news_update", (data: any) => onMessage({ event: "news_update", data }));
-  socket.on("trigger_detected", (data: any) => onMessage({ event: "trigger_detected", data }));
-  socket.on("paper_trade_executed", (data: any) => onMessage({ event: "paper_trade_executed", data }));
-  socket.on("position_closed", (data: any) => onMessage({ event: "position_closed", data }));
+  socket.on("state", (snap) => useTraderStore.getState().setSnap(snap));
+  socket.on("signal", (x) =>
+    s.notify("signal", `${x.strategy} ${x.symbol} ${x.direction}`, `${x.status}${x.reason ? ": " + x.reason : ""}`),
+  );
+  socket.on("trade_opened", (t) =>
+    s.notify("fill", `Paper entry ${t.id}`, `${t.strategy} ${t.tradingsymbol} x${t.quantity} @ ${t.entry_price}`),
+  );
+  socket.on("trade_closed", (t) =>
+    s.notify("exit", `Paper exit ${t.id}`, `${t.exit_reason} @ ${t.exit_price}, net ₹${t.net_pnl}`),
+  );
   return socket;
-};
+}
 
-export const disconnectSocket = () => {
-  if (socket) {
-    socket.disconnect();
-    socket = null;
-  }
-};
-
-export { socket };
+// After a new token: connect again with it.
+export function reconnectSocket() {
+  socket?.disconnect().connect();
+}

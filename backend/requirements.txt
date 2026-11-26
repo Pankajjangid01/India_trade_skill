@@ -1,15 +1,6 @@
-fastapi==0.109.0
-uvicorn[standard]==0.27.0
-pydantic==2.5.3
-pydantic-settings==2.1.0
-python-dotenv==1.0.0
-python-multipart==0.0.6
-python-dateutil==2.8.2
-pytz==2023.3
-
-# Socket.IO for live broadcasts
-python-socketio==5.9.0
-python-engineio==4.8.1
-
-# Stdlib-only additions (already in skill pack)
-# No extra heavy deps - keep it fast
+fastapi>=0.110,<1
+uvicorn[standard]>=0.27
+pydantic>=2.7,<3
+python-dotenv>=1.0
+python-socketio>=5.9,<6
+# the skill pack itself is standard library only

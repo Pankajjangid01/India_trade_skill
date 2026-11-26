@@ -1,0 +1,38 @@
+# Render Blueprint: the backend, the trading engine and the Angel One feed, in ONE service.
+# Render dashboard > New > Blueprint > this repo. It asks for every value marked sync: false.
+# One instance only: the engine runs once per trader folder, and the disk holds that folder.
+services:
+  - type: web
+    name: india-trade-skill-api
+    runtime: python
+    region: singapore          # the closest Render region to India
+    plan: starter              # not free: free services sleep after 15 min and cannot keep a disk
+    branch: main
+    buildCommand: pip install -r backend/requirements.txt
+    # first boot only: copy the repo's settings onto the empty disk (later Settings edits are kept)
+    startCommand: mkdir -p "$TRADER_DIR" && (test -f "$TRADER_DIR/config.json" || cp trader/config.json "$TRADER_DIR/") && cd backend && exec uvicorn app.main:app --host 0.0.0.0 --port "$PORT"
+    healthCheckPath: /health
+    autoDeployTrigger: "off"   # a deploy restarts the engine: deploy by hand, outside 09:00-15:45 IST
+    disk:
+      name: trader
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: TRADER_DIR
+        value: /var/data/trader
+      - key: AUTO_START
+        value: "true"
+      - key: APP_TOKEN          # Render makes a random 256-bit value; the UI asks for it once
+        generateValue: true
+      - key: CORS_ORIGINS       # the Vercel address, e.g. https://india-trade-skill.vercel.app
+        sync: false
+      - key: ANGEL_API_KEY
+        sync: false
+      - key: ANGEL_CLIENT_CODE
+        sync: false
+      - key: ANGEL_PIN
+        sync: false
+      - key: ANGEL_TOTP_SECRET
+        sync: false

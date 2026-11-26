@@ -74,7 +74,10 @@ class Risk(unittest.TestCase):
         store = smart.TickStore(os.path.join("trader", "state", "ticks.sqlite"))
         for token, age in ages.items():
             store.add({"token": token, "exchange_type": 1 if token in ("99926000", "2885") else 2,
-                       "exch_ms": ms - age - 250, "ltp": 100.0, "volume": 99999, "oi": 77777}, ms - age)
+                       "exch_ms": ms - age - 250, "volume": 99999, "oi": 77777,
+                       # the underlyings sit between the base ticket's stop (23,515) and its target
+                       "ltp": getattr(self, "prices", {}).get(token, 23562.5 if token in ("99926000", "2885") else 100.0)},
+                      ms - age)
         store.close()
 
     def ticket(self, **kv):
@@ -134,7 +137,7 @@ class Risk(unittest.TestCase):
         (o,) = smart.read_json(ORDERS)["orders"]
         r = o["risk_result"]
         self.assertEqual((r["verdict"], r["reasons"], r["checked_at_ist"]), ("PASS", [], "2026-11-24T09:42:00+05:30"))
-        self.assertEqual(len(r["checks"]), 14)
+        self.assertEqual(len(r["checks"]), 15)   # signal_valid is the 15th
         self.assertEqual(r["checks"][2], {"name": "max_loss_per_trade", "ok": True,
                                           "detail": "4,454.28 of 5,000.00 (1% of capital 500,000.00)"})
         self.assertEqual(o["status"], "DRAFT")
@@ -236,6 +239,21 @@ class Risk(unittest.TestCase):
                                                      "feed lag 250 ms")
         failed, by = self.failing(ages={"45014": 500, "99926000": 9000})             # the underlying counts too
         self.assertEqual(failed, ["stale_data"])
+
+    def test_a_signal_that_no_longer_stands_is_blocked(self):
+        self.prices = {"99926000": 23510.0}                     # bullish, stop 23,515: already through it
+        failed, by = self.failing()
+        self.assertEqual(failed, ["signal_valid"])
+        self.assertEqual(by["signal_valid"]["detail"], "NIFTY 23,510.00 is already at or below the stop 23,515.00")
+        self.prices = {}
+        smart.write_json(os.path.join("trader", "entry.json"), {"date": "2026-11-24", "bar_close_ist": "09:35"})
+        late, o = "2026-11-24 10:10", self.ticket(entry_underlying=23562.5, no_progress_bars=6)   # due 10:05
+        failed, by = self.failing(o, now=late)
+        self.assertEqual(failed, ["signal_valid"])
+        self.assertEqual(by["signal_valid"]["detail"], "the plan's no-progress deadline 10:05 has passed "
+                                                       "(trigger closed 09:35 at 23,562.50)")
+        self.prices = {"99926000": 23600.0}                     # it moved the right way: it still stands
+        self.assertEqual(self.failing(o, now=late)[0], [])
 
     def test_stale_data_without_a_feed_falls_back_to_the_pick_age(self):
         failed, by = self.failing(ages=None)                           # the pick is from 09:39:50

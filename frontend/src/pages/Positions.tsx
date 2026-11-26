@@ -1,96 +1,67 @@
-import { useTraderStore } from "../store/useTraderStore";
-import { Navbar, Sidebar } from "../components/layout";
-import { PositionCard } from "../components/SignalCard";
+import { useEffect, useState } from "react";
+import { api } from "../services/api";
+import { useTraderStore, type Trade } from "../store/useTraderStore";
+import { TradesTable } from "../components/tables";
+import { Card, inr, pnlClass, todayIST } from "../components/ui";
 
 export const PositionsPage = () => {
-  const { positions, dailyPnl, consecutiveLosses } = useTraderStore();
+  const { snap } = useTraderStore();
+  const [date, setDate] = useState(todayIST());
+  const [past, setPast] = useState<Trade[] | null>(null);
+  const [daily, setDaily] = useState<any[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+  const isToday = snap ? date === snap.today : true;
 
-  const activePositions = positions.filter((p) => p.status === "PAPER_ACTIVE");
-  const closedPositions = positions.filter((p) => p.status === "CLOSED");
+  useEffect(() => {
+    if (isToday) return setPast(null);
+    api.trades(date).then(setPast).catch((e) => setErr(e.message));
+  }, [date, isToday]);
+  const closedCount = snap?.closed_trades.length;
+  useEffect(() => {
+    api.daily(30).then(setDaily).catch((e) => setErr(e.message));
+  }, [closedCount]);
 
+  const closed = isToday ? snap?.closed_trades || [] : (past || []).filter((t) => t.status === "CLOSED");
+  const keys = snap?.strategies.map((s) => s.key) || ["ORB", "EMA_PULLBACK"];
   return (
-    <div className="min-h-screen bg-slate-50">
-      <Navbar />
-      <div className="flex">
-        <Sidebar active="positions" />
-        <div className="flex-1 ml-64 pt-16 pb-8">
-          <div className="max-w-6xl mx-auto px-6">
-            <h1 className="text-2xl font-bold text-slate-900 mb-6">Positions</h1>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <p className="text-xs text-slate-500 font-medium">Total Positions</p>
-                <p className="text-2xl font-bold text-slate-900">{positions.length}</p>
-              </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <p className="text-xs text-slate-500 font-medium">Active</p>
-                <p className="text-2xl font-bold text-green-600">{activePositions.length}</p>
-              </div>
-              <div className="bg-white rounded-xl border border-slate-200 p-5">
-                <p className="text-xs text-slate-500 font-medium">Closed Today</p>
-                <p className="text-2xl font-bold text-slate-900">{closedPositions.length}</p>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl border border-slate-200 p-6">
-              <h2 className="text-lg font-bold text-slate-900 mb-4">Active Positions</h2>
-              {activePositions.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {activePositions.map((pos) => (
-                    <PositionCard key={pos.id} pos={pos} />
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-20">
-                  <p className="text-slate-500">No active positions.</p>
-                </div>
-              )}
-            </div>
-
-            {closedPositions.length > 0 && (
-              <div className="bg-white rounded-xl border border-slate-200 p-6 mt-6">
-                <h2 className="text-lg font-bold text-slate-900 mb-4">Closed Positions Today</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200">
-                        <th className="pb-3 text-xs font-semibold text-slate-500">Symbol</th>
-                        <th className="pb-3 text-xs font-semibold text-slate-500">Type</th>
-                        <th className="pb-3 text-xs font-semibold text-slate-500">Entry</th>
-                        <th className="pb-3 text-xs font-semibold text-slate-500">Exit</th>
-                        <th className="pb-3 text-xs font-semibold text-slate-500">P&L</th>
-                        <th className="pb-3 text-xs font-semibold text-slate-500">Reason</th>
-                        <th className="pb-3 text-xs font-semibold text-slate-500">Time</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {closedPositions.map((pos) => (
-                        <tr key={pos.id} className="border-b border-slate-50 last:border-0">
-                          <td className="py-3 text-slate-900 font-medium">{pos.symbol}</td>
-                          <td className="py-3 text-slate-600">{pos.direction}</td>
-                          <td className="py-3 text-slate-600">{pos.entry_price?.toLocaleString("en-IN")}</td>
-                          <td className="py-3 text-slate-600">{pos.exit_price?.toLocaleString("en-IN")}</td>
-                          <td className={`py-3 font-medium ${pos.pnl >= 0 ? "text-green-600" : "text-red-600"}`}>
-                            {pos.pnl >= 0 ? "+" : ""}{pos.pnl.toLocaleString("en-IN")}
-                          </td>
-                          <td className="py-3 text-slate-600">{pos.exit_reason}</td>
-                          <td className="py-3 text-slate-400 text-xs">{pos.exit_time}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div className="mt-4 pt-4 border-t border-slate-200">
-                  <p className="text-sm font-medium text-slate-900">Total Realised P&L: </p>
-                  <p className={`text-xl font-bold ${dailyPnl >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    ₹{dailyPnl.toLocaleString("en-IN")}
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+    <>
+      <h1 className="text-2xl font-bold text-slate-900 mb-5">Paper trades</h1>
+      {err && <p className="text-sm text-red-600 mb-2">{err}</p>}
+      <Card title="Open positions (live)">
+        <TradesTable rows={snap?.open_trades || []} open empty="No open paper positions." />
+      </Card>
+      <Card title={`Completed trades on ${date}`} right={<input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border border-slate-300 rounded-md px-2 py-1 text-sm" />}>
+        <TradesTable rows={closed} empty="No completed trades on this date." />
+      </Card>
+      <Card title="Daily performance by strategy (IST trading days)">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-xs text-slate-500 text-left">
+                <th className="pb-2 pr-3">Date</th>
+                {keys.map((k) => <th key={k} className="pb-2 pr-3" colSpan={4}>{k}: signals / trades / win rate / net</th>)}
+              </tr>
+            </thead>
+            <tbody>
+              {daily.map((d) => (
+                <tr key={d.date} className="border-b border-slate-50">
+                  <td className="py-2 pr-3 font-medium">{d.date}</td>
+                  {keys.map((k) => {
+                    const s = d.by_strategy[k] || {};
+                    return [
+                      <td key={k + "s"} className="py-2 pr-3">{s.signals ?? 0}</td>,
+                      <td key={k + "t"} className="py-2 pr-3">{s.trades ?? 0}{s.open ? ` (${s.open} open)` : ""}</td>,
+                      <td key={k + "w"} className="py-2 pr-3">{s.win_rate == null ? "—" : `${s.win_rate}% (${s.wins}/${s.completed})`}</td>,
+                      <td key={k + "p"} className={`py-2 pr-3 font-medium ${pnlClass(s.net_pnl)}`}>{inr(s.net_pnl ?? 0, true)}</td>,
+                    ];
+                  })}
+                </tr>
+              ))}
+              {daily.length === 0 && <tr><td className="py-4 text-slate-500">No history yet.</td></tr>}
+            </tbody>
+          </table>
         </div>
-      </div>
-    </div>
+      </Card>
+    </>
   );
 };

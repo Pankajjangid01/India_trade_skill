@@ -70,6 +70,7 @@ Every check runs on every ticket; a BLOCK lists all that failed.
 | `expiry_day_cutoff` | on the option's expiry day, after `session.expiry_day_last_entry` |
 | `fno_ban` | a stock in `ban.txt`, or no `ban.txt` for a stock; an index is never banned |
 | `stale_data` | the option's or the underlying's last tick older than `freshness.stale_tick_sec`; with no feed data, a pick older than `freshness.chain_ttl_sec` |
+| `signal_valid` | the signal must still stand: BLOCK when the underlying's live price is already through the plan's underlying stop, or when the plan's no-progress deadline (the trigger bar's close plus `no_progress_bars` five-minute bars) has passed without a move beyond the entry. Found on the first live day: a 09:45 bearish trigger had reversed through its stop by 11:29 |
 | `event_day` | an `events.json` entry today whose kind is in `risk.block_event_kinds` (default `["rbi", "budget", "election"]`) |
 | `lot_cost` | the premium x quantity over capital x `max_capital_per_trade_pct` |
 | `spread_liquidity` | the pick's spread over `options.max_spread_pct`, OI under `options.min_oi`, volume under `options.min_volume`, or no pick for this option |
@@ -110,6 +111,7 @@ PASS  T20261124-01  BUY NIFTY01DEC2623500CE (NFO), 2 lots = 130 units at 112.40,
       ok   expiry_day_cutoff   not the expiry day (expires 2026-12-01)
       ok   fno_ban             NIFTY is an index: never in the F&O ban
       ok   stale_data          NIFTY01DEC2623500CE 0.5 s old, NIFTY 0.4 s old (limit 3 s); feed lag 250 ms
+      ok   signal_valid        NIFTY 23,562.50, the stop 23,515.00 not reached
       ok   event_day           no event of kind rbi, budget, election today
       ok   lot_cost            2 lots x 7,306.00 = 14,612.00 of 150,000.00 (30% of capital)
       ok   spread_liquidity    spread 0.09% (max 3%), OI 4,512,300 (min 5,000), volume 123,456 (min 1,000)
@@ -137,6 +139,7 @@ BLOCK T20261124-04  BUY NIFTY01DEC2623500CE (NFO), 2 lots = 130 units at 112.40,
       ok   expiry_day_cutoff   not the expiry day (expires 2026-12-01)
       ok   fno_ban             NIFTY is an index: never in the F&O ban
       ok   stale_data          NIFTY01DEC2623500CE 0.5 s old, NIFTY 0.4 s old (limit 3 s); feed lag 250 ms
+      ok   signal_valid        NIFTY 23,562.50, the stop 23,515.00 not reached
       ok   event_day           no event of kind rbi, budget, election today
       ok   lot_cost            2 lots x 7,306.00 = 14,612.00 of 150,000.00 (30% of capital)
       ok   spread_liquidity    spread 0.09% (max 3%), OI 4,512,300 (min 5,000), volume 123,456 (min 1,000)

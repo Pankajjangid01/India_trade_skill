@@ -16,7 +16,8 @@
     "entry_end": "14:00",
     "flat_by": "15:10",
     "expiry_day_flat_by": "14:45",
-    "expiry_day_last_entry": "14:00"
+    "expiry_day_last_entry": "14:00",
+    "range_end": "09:30"
   },
   "options": {
     "strikes_each_side": 15,
@@ -74,5 +75,33 @@
   "flows": {
     "urls": [],
     "aliases": {}
+  },
+  "paper": {
+    "auto_execute": true,
+    "symbols": [
+      "NIFTY",
+      "SENSEX",
+      "BANKNIFTY"
+    ]
+  },
+  "strategies": {
+    "ORB": {
+      "enabled": true,
+      "stop_rule": "or-mid",
+      "target_r": 2.0,
+      "max_trades_per_day": 2
+    },
+    "EMA_PULLBACK": {
+      "enabled": true,
+      "fast": 9,
+      "slow": 21,
+      "pullback_bars": 3,
+      "cooldown_bars": 6,
+      "start_after": "09:45",
+      "min_risk_pct": 0.05,
+      "max_risk_pct": 0.6,
+      "target_r": 2.0,
+      "max_trades_per_day": 2
+    }
   }
 }

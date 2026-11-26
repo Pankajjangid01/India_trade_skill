@@ -328,7 +328,7 @@ def listen(conn, subs, seconds, clock_ms, record):
             other += 1
             continue
         lags[seg].append(ms - tick["exch_ms"])
-        ltp[tick["token"]] = tick["ltp"]
+        ltp.setdefault(tick["token"], tick["ltp"])   # the first tick: nearest in time to the REST snapshot
     every = [x for v in lags.values() for x in v]
     return {"ok": bool(every), "ticks": len(every), "seconds": seconds, "lag_ms": lag_stats(every),
             "by_segment": {seg: dict(ticks=len(v), **lag_stats(v)) for seg, v in lags.items()},
@@ -393,7 +393,8 @@ def stream_probe(a, session, creds, subs, rest_ltp, rows):
                           "".join(json.dumps(f) + "\n" for f in record).encode("utf-8"))
     pairs = [(v, rest_ltp.get(t)) for t, v in out.get("ltp", {}).items() if rest_ltp.get(t)]
     if pairs:
-        out["price_scale_ok"] = all(abs(ws / rest - 1) < 0.005 for ws, rest in pairs)
+        # a paise/rupee slip is 100x off; 5% leaves room for a fast premium (an expiry-day option moves 3% in 20 s)
+        out["price_scale_ok"] = all(abs(ws / rest - 1) < 0.05 for ws, rest in pairs)
     return out
 
 
@@ -562,6 +563,10 @@ def cmd_probe(a):
 
     caps = smart.read_json(p["caps"]) or {}
     keys = caps.get("keys") or {}
+    before = (keys.get(("offline-" if a.offline else "") + fp) or {}).get("endpoints") or {}
+    for name, e in list(eps.items()):   # a rate-limit refusal is not a capability: keep what worked live before
+        if e.get("http") == 403 and (before.get(name) or {}).get("ok"):
+            eps[name] = dict(before[name], note="HTTP 403 rate limit this run; worked on an earlier probe")
     k = {"label": label, "source": source, "probed_at_ist": now.isoformat(), "market": market,
          "endpoints": {n: eps[n] for n in ENDPOINT_ORDER if n in eps}, "stream": stream, "limits": limits}
     keys[("offline-" if a.offline else "") + fp] = k
