@@ -107,7 +107,30 @@ established trend later in the day, where ORB is silent.
 - **Stop (index):** the pullback swing low (high for bearish). Risk must be 0.05–0.6% of price.
 - **Target (index):** entry ± 2 × risk. After a signal the same direction waits 6 bars.
 
-### Shared trade rules (both strategies)
+### OI_PCR — Intraday OI Shift + PCR Confirmation (off by default, NIFTY only by default)
+It waits for option writers to give up a level, instead of guessing direction from price alone.
+- **Data:** after every closed bar the engine takes one option-chain record (in-chain's snapshot,
+  ±20 strikes of the current expiry: OI per strike, PCR = put OI ÷ call OI of those strikes), kept
+  in `trader/state/oi/<INDEX>_<date>.jsonl` so a restart keeps the day's battleground.
+- **Battleground (09:15–09:30):** from the 09:30 record, the **call wall** = the strike with the
+  most call OI (resistance) and the **put wall** = the most put OI (support).
+- **Bullish:** a bar closes at or above the call wall (`near_pct` 0.1% below counts), call OI at the
+  wall is **down** at least 1% since 09:30 (call writers covering), put OI at the wall or one strike
+  below is **up** at least 5% (put writers stepping in), and PCR is above 1.10 and higher than at
+  the previous bar. **Bearish** mirrored at the put wall: put OI unwinds, call OI surges, PCR under
+  0.85 and falling.
+- **No trade:** a wall reached while its writers keep adding OI (they defend it: the range-bound
+  trap) — recorded as a rejected setup with the reason, shown on the dashboard.
+- **Stop (index):** the swing low (high for bearish) of the last 3 bars; risk 0.05–0.6% of price.
+  **Target:** entry ± 2 × risk. One signal per direction per day.
+- **Expiry day:** no signal once the chain rolls to the next expiry
+  (`session.expiry_day_last_entry`): its OI is not comparable with the 09:30 battleground.
+- **Not backtestable:** Angel One keeps no per-strike OI history, so the time machine and the
+  backtest cannot replay it (they say so; with `timemachine.required` false it does not block).
+  Its live paper trades build its record. It buys one option (the in-chain pick, delta 0.35–0.55)
+  like the others; the debit-spread variant is not modelled.
+
+### Shared trade rules (all strategies)
 - **Option:** `in-chain pick` — nearest expiry, |delta| 0.35–0.55, spread ≤ 3%, volume and OI
   minimums, one lot within the capital cap. Paper entry at the **ask** (realistic fill).
 - **Premium stop / target:** 30% (`exit.max_premium_loss_pct`) under the entry; target `target_r` × that risk.

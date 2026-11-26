@@ -3,6 +3,7 @@ import { EngineControl } from "../components/EngineControl";
 import { SignalsTable, StrategyComparison, TradesTable } from "../components/tables";
 import { AlertBanner, Badge, Card, StatCard, inr, num, pnlClass, timeIST } from "../components/ui";
 import { HybridPanel } from "../components/hybrid";
+import { OiPcrPanel } from "../components/oipcr";
 
 export const Dashboard = () => {
   const { snap } = useTraderStore();
@@ -72,6 +73,10 @@ export const Dashboard = () => {
 
       <Card title="EMA + ORB Hybrid: opening range, breakout and EMA confirmation">
         <HybridPanel market={snap.market} />
+      </Card>
+
+      <Card title="OI Shift + PCR: the 09:30 battleground, writers covering, PCR confirmation">
+        <OiPcrPanel market={snap.market} />
       </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

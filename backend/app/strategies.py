@@ -47,6 +47,27 @@ EMA_ORB  (hybrid: EMA_PULLBACK confirmed by an opening-range breakout; a third s
   Day     at most max_trades_per_day (2); with stop_after_first_sl, a first trade that hits its
           stop ends this strategy's day (paper.gate live, the replay in app/timemachine.py).
 ema_orb_evaluate() returns the signals AND every setup's accept/reject reason, for the UI.
+
+OI_PCR  (Intraday OI Shift + PCR confirmation; a fourth strategy, needs the option chain, not only bars)
+  Data    one option-chain record per closed bar (oi_record(): open interest of every strike +/-
+          strikes_each_side around the money, the PCR = put OI / call OI of those strikes, spot,
+          expiry), taken by the engine right after the bar closes (in-chain's take_snapshot).
+  Walls   from the record of the bar closing at range_end (the 09:15-09:30 battleground): the call
+          wall = the strike with the most call OI (resistance), the put wall = the most put OI.
+  OI shift  % change of a strike's OI since that battleground record (intraday change in OI).
+  Bullish the bar CLOSES at or above call wall x (1 - near_pct%), call OI at the wall is down at
+          least min_unwind_pct % (call writers covering), put OI at the wall or one strike below is
+          up at least min_surge_pct % (put writers stepping in), and the PCR is above pcr_bull and
+          higher than at the previous record ("keeps climbing").
+  Bearish mirrored at the put wall: put OI unwinds, call OI surges at the wall or one strike above,
+          PCR under pcr_bear and falling.
+  No trade a wall reached while its writers keep ADDING (call OI up at the call wall): they defend
+          it, the range-bound trap; recorded as a rejected setup with that reason.
+  Stop    the lowest low (bullish) / highest high of the last swing_bars bars, within
+          min_risk_pct..max_risk_pct of price. Target entry +/- target_r x risk.
+  Day     one signal per direction; none once the chain rolls to another expiry than the battleground's
+          (expiry day after session.expiry_day_last_entry): its OI is not comparable.
+  It cannot be replayed (Angel One keeps no per-strike OI history): live paper trades are its record.
 """
 
 from decimal import Decimal
@@ -66,9 +87,15 @@ STRATEGIES = {
                              "start_after": "09:45", "min_risk_pct": 0.05, "max_risk_pct": 0.6, "min_or_pct": 0.35,
                              "stop_method": "ema", "atr_mult": 1.5, "swing_bars": 10, "target_r": 2.0,
                              "max_trades_per_day": 2, "stop_after_first_sl": True}},
+    "OI_PCR": {"name": "OI Shift + PCR Confirmation",
+               "defaults": {"enabled": False, "symbols": "NIFTY", "strikes_each_side": 20, "start_after": "09:30",
+                            "near_pct": 0.1, "min_unwind_pct": 1.0, "min_surge_pct": 5.0, "pcr_bull": 1.1,
+                            "pcr_bear": 0.85, "swing_bars": 3, "min_risk_pct": 0.05, "max_risk_pct": 0.6,
+                            "target_r": 2.0, "max_trades_per_day": 2}},
 }
 STOP_METHODS = ("ema", "atr", "swing")
-ZERO_OK = {"min_or_pct"}          # settings where 0 is a valid value (it turns the filter off)
+INDICES = ("NIFTY", "SENSEX", "BANKNIFTY")
+ZERO_OK = {"min_or_pct", "near_pct", "min_unwind_pct", "min_surge_pct"}   # 0 is valid: it turns the filter off
 
 
 def strategy_cfg(cfg, key):
@@ -293,9 +320,148 @@ def ema_orb_signals(symbol, date, prev_bars, bars, s, range_end="09:30"):
     return ema_orb_evaluate(symbol, date, prev_bars, bars, s, range_end)[0]
 
 
-def evaluate(cfg, symbol, date, prev_bars, bars, range_end="09:30"):
+# ---------------------------------------------------------------- OI_PCR
+
+def oi_symbols(s):
+    """OI_PCR's indices from its comma-separated `symbols` setting."""
+    return [x.strip().upper() for x in str(s.get("symbols") or "").split(",") if x.strip().upper() in INDICES]
+
+
+def oi_record(chain, bar):
+    """What OI_PCR keeps of one in-chain snapshot taken after `bar` (HH:MM start) closed."""
+    by = {}
+    for r in chain.get("rows") or []:
+        if r.get("oi") is not None and r.get("type") in ("CE", "PE"):
+            by.setdefault(float(r["strike"]), [None, None])[0 if r["type"] == "CE" else 1] = int(r["oi"])
+    return {"bar": bar, "as_of_ist": chain["as_of_ist"], "expiry": chain["expiry"], "spot": chain["spot"],
+            "step": chain["step"], "pcr": chain.get("pcr_oi"), "pcr_api": (chain.get("pcr_api") or {}).get("pcr"),
+            "partial": chain.get("partial_note"), "oi": [[k, ce, pe] for k, (ce, pe) in sorted(by.items())]}
+
+
+def _table(rec):
+    return {float(k): (ce, pe) for k, ce, pe in rec.get("oi") or []}
+
+
+def _pct(now, base):
+    return None if now is None or not base else round((now - base) / base * 100, 2)
+
+
+def oi_walls(rec):
+    """(call wall, put wall): the strikes with the most call / put OI, ties to the one nearer spot."""
+    t, spot = _table(rec), rec["spot"]
+    ce = [(v[0], -abs(k - spot), k) for k, v in t.items() if v[0]]
+    pe = [(v[1], -abs(k - spot), k) for k, v in t.items() if v[1]]
+    return (max(ce)[2], max(pe)[2]) if ce and pe else None
+
+
+def _fmt(x):
+    return "n/a" if x is None else "%+.1f%%" % x
+
+
+def oi_pcr_evaluate(symbol, date, bars, snaps, s, range_end="09:30"):
+    """OI_PCR's signals for the day so far and its decisions, for the UI: (signals, state).
+    snaps: {bar start HH:MM: oi_record}. Deterministic over the same bars and records."""
+    base_bar = add_min(range_end, -BAR_MIN)
+    base = snaps.get(base_bar)
+    state = {"baseline": None, "now": None, "decisions": [], "snapshots": len(snaps), "note": None}
+    if base is None:
+        state["note"] = "no chain record for the %s bar (closing %s): the battleground is marked from it" % (
+            base_bar, range_end)
+        return [], state
+    walls = oi_walls(base)
+    if walls is None:
+        state["note"] = "the %s chain record has no open interest" % base_bar
+        return [], state
+    call_w, put_w = walls
+    b0, step = _table(base), float(base["step"])
+    bp = base["pcr"]
+    state["baseline"] = {"bar": base_bar, "as_of_ist": base["as_of_ist"], "expiry": base["expiry"],
+                         "spot": base["spot"], "pcr": bp, "call_wall": call_w, "call_wall_oi": b0[call_w][0],
+                         "put_wall": put_w, "put_wall_oi": b0[put_w][1],
+                         "opening": None if bp is None else "balanced" if 0.9 <= bp <= 1.1 else
+                         "put-heavy" if bp > 1.1 else "call-heavy"}
+    near, unwind, surge = float(s["near_pct"]), float(s["min_unwind_pct"]), float(s["min_surge_pct"])
+    bull, bear, swing = float(s["pcr_bull"]), float(s["pcr_bear"]), max(1, int(s["swing_bars"]))
+    out, done, prev_pcr = [], set(), bp
+
+    def chg(t, k, i):
+        return _pct((t.get(k) or (None, None))[i], (b0.get(k) or (None, None))[i])
+
+    for i, b in enumerate(bars):
+        snap = snaps.get(b["start_ist"])
+        if b["start_ist"] <= base_bar or b["start_ist"] < s["start_after"] or snap is None:
+            continue
+        pcr, t = snap["pcr"], _table(snap)
+        state["now"] = {"bar": b["start_ist"], "as_of_ist": snap["as_of_ist"], "spot": snap["spot"], "pcr": pcr,
+                        "pcr_prev": prev_pcr, "call_wall_ce_pct": chg(t, call_w, 0),
+                        "call_wall_pe_pct": chg(t, call_w, 1), "put_wall_pe_pct": chg(t, put_w, 1),
+                        "put_wall_ce_pct": chg(t, put_w, 0), "expiry": snap["expiry"]}
+        for side in ("bullish", "bearish"):
+            up = side == "bullish"
+            wall = call_w if up else put_w
+            at = b["close"] >= wall * (1 - near / 100) if up else b["close"] <= wall * (1 + near / 100)
+            if side in done or not at:
+                continue
+
+            def decide(ok, reason):
+                state["decisions"].append({"bar_start_ist": b["start_ist"], "bar_close_ist": add_min(b["start_ist"], BAR_MIN),
+                                           "direction": side, "wall": wall, "accepted": ok, "reason": reason})
+            if snap["expiry"] != base["expiry"]:
+                decide(False, "the chain rolled to the %s expiry: OI is not comparable with the %s battleground" % (
+                    snap["expiry"], base["expiry"]))
+                continue
+            own = chg(t, wall, 0 if up else 1)                     # the wall's writers: covering or adding?
+            other = [x for x in (chg(t, wall, 1 if up else 0), chg(t, wall - step if up else wall + step, 1 if up else 0))
+                     if x is not None]
+            surged = max(other) if other else None
+            kind, opp = ("call", "put") if up else ("put", "call")
+            if own is None:
+                decide(False, "no %s OI at the %s wall %g in this record" % (kind, kind, wall))
+                continue
+            if own > -unwind:
+                decide(False, "%s writers %s at %g (%s %s OI since %s): %s" % (
+                    kind, "adding" if own > 0 else "holding", wall, _fmt(own), kind, base_bar,
+                    "they defend the wall, range-bound trap" if own >= 0 else "not unwinding %.1f%% yet" % unwind))
+                continue
+            if surged is None or surged < surge:
+                decide(False, "%s writers covering at %g (%s) but %s OI %s, under +%.1f%%" % (
+                    kind, wall, _fmt(own), opp, _fmt(surged), surge))
+                continue
+            if pcr is None or not (pcr > bull and (prev_pcr is None or pcr > prev_pcr) if up else
+                                   pcr < bear and (prev_pcr is None or pcr < prev_pcr)):
+                decide(False, "OI shift at %g, but PCR %s %s, needs %s %.2f and %s" % (
+                    wall, "n/a" if pcr is None else "%.2f" % pcr,
+                    "from %.2f" % prev_pcr if prev_pcr is not None else "", "above" if up else "under",
+                    bull if up else bear, "rising" if up else "falling"))
+                continue
+            span = bars[max(0, i - swing + 1):i + 1]
+            stop = min(x["low"] for x in span) if up else max(x["high"] for x in span)
+            risk_pct = abs(b["close"] - stop) / b["close"] * 100
+            if not float(s["min_risk_pct"]) <= risk_pct <= float(s["max_risk_pct"]):
+                decide(False, "stop risk %.2f%% outside %.2f%%..%.2f%%" % (risk_pct, float(s["min_risk_pct"]),
+                                                                         float(s["max_risk_pct"])))
+                continue
+            sig = _signal("OI_PCR", symbol, date, b, side, stop, float(s["target_r"]),
+                          "%s writers covering at %g (%s), %s writers adding (%s), PCR %.2f %s from %.2f" % (
+                              kind, wall, _fmt(own), opp, _fmt(surged), pcr, "rising" if up else "falling",
+                              prev_pcr if prev_pcr is not None else pcr))
+            if sig is None:
+                decide(False, "zero risk after rounding the stop")
+                continue
+            sig["oi"] = {"wall": wall, "own_change_pct": own, "opposite_change_pct": surged, "pcr": pcr,
+                         "pcr_prev": prev_pcr, "battleground_pcr": bp, "record_as_of_ist": snap["as_of_ist"],
+                         "expiry": snap["expiry"]}
+            decide(True, "accepted: %s" % sig["note"])
+            done.add(side)
+            out.append(sig)
+        prev_pcr = pcr
+    return out, state
+
+
+def evaluate(cfg, symbol, date, prev_bars, bars, range_end="09:30", oi=None):
     """Every enabled strategy's signals for today's closed bars. prev_bars None (the previous day
-    could not be fetched) skips EMA_PULLBACK: EMAs seeded on less data would give different signals."""
+    could not be fetched) skips EMA_PULLBACK: EMAs seeded on less data would give different signals.
+    oi: OI_PCR's {bar: oi_record} for this symbol today; None skips OI_PCR."""
     bars = clean_bars(bars)
     out = []
     s = strategy_cfg(cfg, "ORB")
@@ -307,4 +473,7 @@ def evaluate(cfg, symbol, date, prev_bars, bars, range_end="09:30"):
     s = strategy_cfg(cfg, "EMA_ORB")
     if s["enabled"] and prev_bars is not None:
         out += ema_orb_signals(symbol, date, clean_bars(prev_bars), bars, s, range_end)
+    s = strategy_cfg(cfg, "OI_PCR")
+    if s["enabled"] and oi is not None and symbol in oi_symbols(s):
+        out += oi_pcr_evaluate(symbol, date, bars, oi, s, range_end)[0]
     return out

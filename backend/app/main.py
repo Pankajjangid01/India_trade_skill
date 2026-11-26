@@ -30,7 +30,7 @@ log = logging.getLogger("backend")
 from app import skills  # noqa: E402
 from app.engine import EngineError, engine  # noqa: E402
 from app.sp import smart  # noqa: E402
-from app.strategies import STOP_METHODS, STRATEGIES, ZERO_OK, strategy_cfg  # noqa: E402
+from app.strategies import INDICES, STOP_METHODS, STRATEGIES, ZERO_OK, strategy_cfg  # noqa: E402
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=config.CORS_ORIGINS)
 PUSH_SEC = 2
@@ -220,6 +220,11 @@ def clean_strategy(key, vals):
             raise HTTPException(422, "%s.start_after must be HH:MM" % key)
         if k == "stop_rule" and v not in ("or-mid", "or-opposite"):
             raise HTTPException(422, "%s.stop_rule must be or-mid or or-opposite" % key)
+        if k == "symbols":
+            names = [x.strip().upper() for x in v.split(",") if x.strip()]
+            if not names or any(x not in INDICES for x in names):
+                raise HTTPException(422, "%s.symbols must be a comma-separated subset of %s" % (key, ", ".join(INDICES)))
+            v = ",".join(names)
         clean[k] = v
     return clean
 

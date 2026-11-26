@@ -32,6 +32,39 @@ export interface Hybrid {
   prev_day: boolean;
 }
 
+// OI_PCR's live view per index (engine.oi_state, from the same function as its signals)
+export interface OiPcr {
+  enabled: boolean;
+  traded: boolean; // this index is in OI_PCR's symbols
+  symbols: string[];
+  note?: string | null;
+  snapshots?: number;
+  baseline?: {
+    bar: string;
+    as_of_ist: string;
+    expiry: string;
+    spot: number;
+    pcr: number | null;
+    call_wall: number;
+    call_wall_oi: number;
+    put_wall: number;
+    put_wall_oi: number;
+    opening: string | null;
+  } | null;
+  now?: {
+    bar: string;
+    spot: number;
+    pcr: number | null;
+    pcr_prev: number | null;
+    call_wall_ce_pct: number | null;
+    call_wall_pe_pct: number | null;
+    put_wall_pe_pct: number | null;
+    put_wall_ce_pct: number | null;
+    expiry: string;
+  } | null;
+  decisions?: { bar_start_ist: string; bar_close_ist: string; direction: string; wall: number; accepted: boolean; reason: string }[];
+}
+
 export interface Signal {
   id: string;
   date: string;
@@ -133,6 +166,7 @@ export interface Snapshot {
     bars?: number;
     last_bar_ist?: string | null;
     hybrid?: Hybrid | null;
+    oi_pcr?: OiPcr | null;
   }[];
   config: {
     entry_start: string;

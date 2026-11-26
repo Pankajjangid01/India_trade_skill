@@ -184,6 +184,7 @@ class Engine:
         self.market, self.last_eval, self.next_eval, self.next_quote, self.quote_cache = {}, {}, {}, {}, {}
         self.subscribed = None
         self.tm_window, self.tm_cache, self.master_rows, self.bars = None, {}, None, {}
+        self.oi = {}                                    # OI_PCR: {symbol: {bar: oi_record}} for today
         self.background, self.news_day, self.next_alerts = skills.Background(), None, 0.0         # in-timemachine: the rolling window store, verdicts by day
         self.status = {"phase": None, "phase_reason": None, "last_cycle_ist": None, "last_error": None,
                        "errors": 0, "started_at": None, "cycles": 0}
@@ -335,7 +336,7 @@ class Engine:
         del rows
         if self.day != day:
             self.prev_bars, self.prev_close, self.last_eval, self.next_eval = {}, {}, {}, {}
-            self.tm_cache, self.bars = {}, {}
+            self.tm_cache, self.bars, self.oi = {}, {}, {}
         self.day, self.facts = day, facts
         log.info("instrument master loaded for %s: %s", day,
                  ", ".join("%s token %s" % (s, f["token"]) for s, f in facts.items()))
@@ -396,7 +397,7 @@ class Engine:
             ltp, source, age = px.get(self.facts[s]["token"], (None, None, None))
             # every key exists from the start: the UI thread copies this dict while this thread updates it
             m = self.market.setdefault(s, {"symbol": s, "bars_source": None, "bars": 0, "last_bar_ist": None,
-                                           "bars_note": None, "hybrid": None})
+                                           "bars_note": None, "hybrid": None, "oi_pcr": None})
             prev = self.prev_close.get(s)
             m.update(ltp=ltp, source=source, age_sec=round(age, 1) if age is not None else None,
                      stale=ltp is None or (source == "feed" and age > stale_sec), prev_close=prev,
@@ -468,6 +469,7 @@ class Engine:
         for s in [s for s in self.symbols(cfg) if s in self.facts]:
             if self.last_eval.get(s) == expected or time.time() < self.next_eval.get(s, 0):
                 continue
+            oi = self.oi_records(s, expected, now, cfg)      # right at the bar close, before the bars arrive
             f = self.facts[s]
             d = smart.day_bars(self.trader, f["segment"], f["token"], 5, now, self.client)
             bars = strat.clean_bars(d["bars"])
@@ -480,8 +482,10 @@ class Engine:
                 self.next_eval[s] = time.time() + BAR_RETRY_SEC
                 continue
             prev = self.previous_day_bars(s, now)
+            range_end = (cfg.get("session") or {}).get("range_end", "09:30")
             m["hybrid"] = self.hybrid_state(s, prev, bars, cfg)
-            for sig in strat.evaluate(cfg, s, self.day, prev, bars, (cfg.get("session") or {}).get("range_end", "09:30")):
+            m["oi_pcr"] = self.oi_state(s, bars, oi, cfg, range_end)
+            for sig in strat.evaluate(cfg, s, self.day, prev, bars, range_end, oi=oi):
                 if not self.store.has_signal(sig["id"]):
                     self.process(sig, cfg)
             if prev is None:                                # EMA_PULLBACK waits for the previous day's bars
@@ -513,6 +517,55 @@ class Engine:
                 sl[-1] < sl[-4] else "no trend"
             out["ema"] = {"fast": round(f[-1], 2), "slow": round(sl[-1], 2), "trend": trend,
                           "period": [int(s["fast"]), int(s["slow"])]}
+        return out
+
+    def oi_records(self, sym, bar, now, cfg):
+        """OI_PCR's {bar: oi_record} for sym today, after taking this closed bar's record (once per bar: in-chain's
+        take_snapshot, +/- strikes_each_side). Kept in state/oi/<SYM>_<day>.jsonl, so a restart keeps the 09:30
+        battleground. None when OI_PCR does not trade sym. A failed snapshot leaves that bar without a record."""
+        s = strat.strategy_cfg(cfg, "OI_PCR")
+        if not s["enabled"] or sym not in strat.oi_symbols(s):
+            return None
+        path = os.path.join(self.p["state"], "oi", "%s_%s.jsonl" % (sym, self.day))
+        recs = self.oi.get(sym)
+        if recs is None:
+            recs = self.oi[sym] = {}
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as fh:
+                    for line in fh:
+                        try:
+                            r = json.loads(line)
+                        except ValueError:                  # a line cut short by a crash
+                            continue
+                        recs.setdefault(r.get("bar"), r)
+        if bar in recs:
+            return recs
+        a = argparse.Namespace(trader=self.trader, underlying=sym, offline=None, now=None)
+        c = dict(cfg, options=dict(cfg.get("options") or {}, strikes_each_side=int(s["strikes_each_side"])))
+        try:
+            # ponytail: take_snapshot parses the whole instrument master (~2 s) each bar; pass rows in if it lags
+            doc, _ = chain.take_snapshot(a, self.p, c, now)
+        except Exception as e:                  # never lets a chain failure stop the other strategies' scan
+            log.warning("OI_PCR: no %s chain record for the %s bar: %s: %s", sym, bar, type(e).__name__, e)
+            return recs
+        finally:
+            smart.subscribe(self.trader, "in-chain:" + sym, [])   # the snapshot's chain tokens are not needed after it
+        rec = strat.oi_record(doc, bar)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(rec, separators=(",", ":")) + "\n")
+        recs[bar] = rec
+        log.info("OI_PCR %s %s record: PCR %s, %d strikes%s", sym, bar, rec["pcr"], len(rec["oi"]),
+                 " (partial: %s)" % rec["partial"] if rec["partial"] else "")
+        return recs
+
+    def oi_state(self, sym, bars, recs, cfg, range_end):
+        """OI_PCR's live view for the dashboard, from the same strat.oi_pcr_evaluate its signals come from."""
+        s = strat.strategy_cfg(cfg, "OI_PCR")
+        out = {"enabled": bool(s["enabled"]), "traded": recs is not None, "symbols": strat.oi_symbols(s)}
+        if recs is not None:
+            _, st = strat.oi_pcr_evaluate(sym, self.day, bars, recs, s, range_end)
+            out.update(st, decisions=st["decisions"][-6:])
         return out
 
     def previous_day_bars(self, s, now):
@@ -552,14 +605,14 @@ class Engine:
                "underlying_ltp": (self.market.get(sig["symbol"]) or {}).get("ltp"),
                "auto_execute": (cfg.get("paper") or {}).get("auto_execute", True), "s": s}
         status, reason = paper.gate(sig, now, cfg, ctx)
-        meta = None
+        meta = {"oi": sig["oi"]} if sig.get("oi") else None      # OI_PCR's evidence: wall, OI shift, PCR
         if status in ("EXECUTE", "EXECUTABLE") and timemachine.settings(cfg)["enabled"] and \
                 not self.store.has_signal(sig["id"]):
             doc = self.timemachine_verdict(sig["symbol"], sig["strategy"], now, cfg)
             log.info("TIME MACHINE %s %s: %s", "BLOCK" if not doc["ok"] else "PASS" if doc["data"] else "SKIP", sig["id"],
                      doc["reason"])
             sig["timemachine"] = timemachine.summary(doc)
-            meta = {"timemachine": sig["timemachine"]}
+            meta = dict(meta or {}, timemachine=sig["timemachine"])
             if not doc["ok"]:
                 status, reason = "REJECTED", "time machine: %s" % doc["reason"]
         if not self.store.add_signal(sig, "EXECUTABLE" if status == "EXECUTE" else status,
@@ -600,7 +653,7 @@ class Engine:
 
     def _execute_picked(self, sig, now, cfg, s, rc, text):
         sym, side = sig["symbol"], sig["direction"]
-        meta = {"timemachine": sig.get("timemachine")} if sig.get("timemachine") else {}
+        meta = {k: sig[k] for k in ("timemachine", "oi") if sig.get(k)}
         if rc != 0:
             return self._reject(sig, "no option passed the pick rules: %s" % (text[-1] if text else "in-chain refused"),
                                 meta or None)

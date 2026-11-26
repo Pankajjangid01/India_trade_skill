@@ -236,6 +236,9 @@ def _sequence(signals, day, bars, s, rule, expiry):
 
 def simulate(symbol, strategy, cfg, window, expiries=()):
     """Replay `strategy` on the window's days and resample: the data part of the verdict."""
+    if strategy == "OI_PCR":
+        raise smart.SmartError("OI_PCR needs the option chain's open interest at every bar and Angel One keeps no "
+                               "history of it, so it cannot be replayed: its live paper trades are its record")
     s = strat.strategy_cfg(cfg, strategy)
     rule = _rule(cfg, s)
     used = [d for d in window["dates"] if window["bars"].get(d)]
