@@ -27,6 +27,7 @@ _fh.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(messag
 logging.getLogger().addHandler(_fh)
 log = logging.getLogger("backend")
 
+from app import skills  # noqa: E402
 from app.engine import EngineError, engine  # noqa: E402
 from app.sp import smart  # noqa: E402
 from app.strategies import STRATEGIES, strategy_cfg  # noqa: E402
@@ -197,6 +198,30 @@ def settings_view(cfg):
             "strategies": {k: {"name": v["name"], **strategy_cfg(cfg, k)} for k, v in STRATEGIES.items()}}
 
 
+def clean_strategy(key, vals):
+    """A strategy's settings checked against its defaults' types: 422 on anything unknown or out of range."""
+    if key not in STRATEGIES:
+        raise HTTPException(422, "unknown strategy %s" % key)
+    defaults = STRATEGIES[key]["defaults"]
+    clean = {}
+    for k, v in (vals or {}).items():
+        if k not in defaults:
+            raise HTTPException(422, "%s has no setting %s" % (key, k))
+        want = type(defaults[k])
+        try:
+            v = want(v) if want is not bool else bool(v)
+        except (TypeError, ValueError):
+            raise HTTPException(422, "%s.%s must be %s" % (key, k, want.__name__))
+        if want in (int, float) and v <= 0:
+            raise HTTPException(422, "%s.%s must be above 0" % (key, k))
+        if k == "start_after" and not re.match(HHMM, v):
+            raise HTTPException(422, "%s.start_after must be HH:MM" % key)
+        if k == "stop_rule" and v not in ("or-mid", "or-opposite"):
+            raise HTTPException(422, "%s.stop_rule must be or-mid or or-opposite" % key)
+        clean[k] = v
+    return clean
+
+
 @api.get("/api/v1/settings")
 async def get_settings():
     return settings_view(smart.load_config(config.TRADER_DIR))
@@ -215,26 +240,75 @@ async def post_settings(body: SettingsIn):
         if not s.get("entry_start", "09:30") < s.get("entry_end", "14:00") <= s.get("flat_by", "15:10"):
             raise HTTPException(422, "need entry_start < entry cutoff <= flat_by")
         for key, vals in (body.strategies or {}).items():
-            if key not in STRATEGIES:
-                raise HTTPException(422, "unknown strategy %s" % key)
-            defaults = STRATEGIES[key]["defaults"]
-            clean = {}
-            for k, v in vals.items():
-                if k not in defaults:
-                    raise HTTPException(422, "%s has no setting %s" % (key, k))
-                want = type(defaults[k])
-                try:
-                    v = want(v) if want is not bool else bool(v)
-                except (TypeError, ValueError):
-                    raise HTTPException(422, "%s.%s must be %s" % (key, k, want.__name__))
-                if want in (int, float) and v <= 0:
-                    raise HTTPException(422, "%s.%s must be above 0" % (key, k))
-                if k == "start_after" and not re.match(HHMM, v):
-                    raise HTTPException(422, "%s.start_after must be HH:MM" % key)
-                if k == "stop_rule" and v not in ("or-mid", "or-opposite"):
-                    raise HTTPException(422, "%s.stop_rule must be or-mid or or-opposite" % key)
-                clean[k] = v
+            clean = clean_strategy(key, vals)
             cfg.setdefault("strategies", {})[key] = {**(cfg["strategies"].get(key) or {}), **clean}
         smart.write_json(path, cfg)
     log.info("settings updated: %s", ", ".join(k for k, v in body.model_dump(exclude_none=True).items() if v))
     return settings_view(cfg)
+
+
+# ---------------------------------------------------------------- the skill pack, the time machine, the backtest
+
+@api.get("/api/v1/skills")
+async def skill_catalog():
+    """Every runnable command, with the last run of each (its ok, reason and time)."""
+    out = {}
+    for skill, cmds in skills.catalog().items():
+        out[skill] = {}
+        for cmd, desc in cmds.items():
+            last = skills.last(skill, cmd) or {}
+            out[skill][cmd] = {"description": desc, "last": {"ok": last.get("ok"), "reason": last.get("reason"),
+                                                             "started_ist": (last.get("data") or {}).get("started_ist")}
+                               if last else None}
+    return out
+
+
+class SkillRun(BaseModel):
+    args: Dict[str, object] = Field(default_factory=dict)
+
+
+@api.post("/api/v1/skills/{skill}/{command}")
+async def skill_run(skill: str, command: str, body: SkillRun):
+    try:
+        skills.argv_for(skill, command, body.args)        # 422 before anything runs
+    except skills.SkillError as e:
+        raise HTTPException(422, str(e))
+    return await run_in_threadpool(skills.run, skill, command, body.args)
+
+
+@api.get("/api/v1/skills/{skill}/{command}")
+async def skill_last(skill: str, command: str):
+    if command not in skills.COMMANDS.get(skill, {}):
+        raise HTTPException(404, "unknown skill command")
+    doc = skills.last(skill, command)
+    if doc is None:
+        raise HTTPException(404, "%s %s has not run yet" % (skill, command))
+    return doc
+
+
+@api.get("/api/v1/timemachine/{symbol}/{strategy}")
+async def timemachine_last(symbol: str, strategy: str):
+    """The engine's last pre-trade verdict for this index and strategy (state/timemachine/<S>_<STRATEGY>.json)."""
+    if symbol.upper() not in ("NIFTY", "SENSEX", "BANKNIFTY") or strategy not in STRATEGIES:
+        raise HTTPException(404, "unknown symbol or strategy")
+    doc = smart.read_json(os.path.join(config.TRADER_DIR, "state", "timemachine",
+                                       "%s_%s.json" % (symbol.upper(), strategy)))
+    if doc is None:
+        raise HTTPException(404, "no verdict yet: one is made at the first signal of the day")
+    return doc
+
+
+class BacktestIn(BaseModel):
+    symbol: str = Field("NIFTY", pattern=r"^(NIFTY|SENSEX|BANKNIFTY)$")
+    strategy: str = "ORB"
+    days: int = Field(60, ge=20, le=250)
+    overrides: Dict[str, object] = Field(default_factory=dict)
+
+
+@api.post("/api/v1/backtest")
+async def backtest(body: BacktestIn):
+    overrides = clean_strategy(body.strategy, body.overrides)
+    try:
+        return await run_in_threadpool(engine.backtest, body.symbol, body.strategy, body.days, overrides)
+    except EngineError as e:
+        raise HTTPException(409, str(e))

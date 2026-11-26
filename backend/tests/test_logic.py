@@ -104,7 +104,8 @@ class EmaPullbackTest(unittest.TestCase):
         self.assertFalse([s for s in sigs if s["strategy"] == "EMA_PULLBACK"])
 
 
-CFG = json.load(open(os.path.join(ROOT, "trader", "config.json")))
+with open(os.path.join(ROOT, "trader", "config.json")) as _fh:
+    CFG = json.load(_fh)
 SIG = {"id": "x", "strategy": "ORB", "symbol": "NIFTY", "date": DAY, "direction": "bullish", "bar_start_ist": "13:50",
        "bar_close_ist": "13:55", "entry_underlying": 25900.0, "stop_underlying": 25850.0, "target_underlying": 26000.0,
        "risk_points": 50.0}
@@ -163,7 +164,8 @@ class ExitTest(unittest.TestCase):
         self.assertIsNone(paper.exit_reason(TRADE, 120.0, 25900.0, "14:45"))
 
     def test_pnl_is_long_option_for_both_directions(self):
-        ch = json.load(open(os.path.join(ROOT, "skillpack", "in-setup", "charges.example.json")))
+        with open(os.path.join(ROOT, "skillpack", "in-setup", "charges.example.json")) as fh:
+            ch = json.load(fh)
         g, c, n = paper.pnl(100.0, 120.0, [65], "NFO", ch)
         self.assertEqual(g, 1300.0)
         self.assertGreater(c, 60)                 # two orders of Rs 30 brokerage plus taxes
@@ -225,6 +227,14 @@ class StoreTest(unittest.TestCase):
         self.assertEqual(self.st.stats("2026-11-27", ["ORB"])["ORB"]["trades"], 0)  # a new day starts at zero
 
 
+# the slice of the instrument master in-risk reads: the option and its index (synthetic rows)
+MASTER_ROWS = [{"token": "999", "symbol": "NIFTY01DEC2625900CE", "name": "NIFTY", "expiry": "01DEC2026",
+                "strike": "2590000.000000", "lotsize": "65", "instrumenttype": "OPTIDX", "exch_seg": "NFO",
+                "tick_size": "5.000000"},
+               {"token": "99926000", "symbol": "Nifty 50", "name": "NIFTY", "expiry": "", "strike": "0",
+                "lotsize": "1", "instrumenttype": "AMXIDX", "exch_seg": "NSE", "tick_size": "0"}]
+
+
 class SimulatedDayTest(unittest.TestCase):
     """The engine's signal -> paper trade -> exit path on controlled data: the option pick and
     every price are stubbed. This is a simulation, not live validation."""
@@ -236,6 +246,7 @@ class SimulatedDayTest(unittest.TestCase):
         self.eng.day = DAY
         self.cfg = smart.load_config(self.dir)
         self.eng.market["NIFTY"] = {"ltp": 25905.0}
+        self.eng.master_rows = MASTER_ROWS
 
     def tearDown(self):
         self.eng.store.db.close()
@@ -244,7 +255,7 @@ class SimulatedDayTest(unittest.TestCase):
     def fake_pick(self, a):
         smart.write_json(os.path.join(self.dir, "pick.json"), {
             "underlying": a.underlying, "direction": a.direction, "as_of_ist": self.now.isoformat(),
-            "premium": 150.0, "bid": 149.5, "ask": 150.5,
+            "premium": 150.0, "bid": 149.5, "ask": 150.5, "spread_pct": 0.67, "volume": 50000, "oi": 900000,
             "instrument": {"tradingsymbol": "NIFTY01DEC2625900CE", "token": "999", "segment": "NFO", "type": "CE",
                            "expiry": "2026-12-01", "lot_size": 65, "tick_size": 0.05, "freeze_qty": 1801}})
         return 0

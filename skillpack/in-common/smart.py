@@ -104,8 +104,12 @@ class SmartError(Exception):
 
 def parse_ist(text):
     """'2026-11-24 10:20' (IST) or an ISO time with an offset -> aware IST datetime."""
+    text = text.strip()
+    # Python 3.9's fromisoformat takes only 3 or 6 fraction digits: pad or cut any other count to 6
+    text = re.sub(r"(T|\s)(\d{2}:\d{2}:\d{2})\.(\d+)", lambda m: "%s%s.%s" % (
+        m.group(1), m.group(2), (m.group(3) + "000000")[:6]), text, count=1)
     try:
-        dt = datetime.datetime.fromisoformat(text.strip())
+        dt = datetime.datetime.fromisoformat(text)
     except ValueError:
         raise SmartError('a time wants "YYYY-MM-DD HH:MM" in IST, got %r' % text)
     return dt.replace(tzinfo=IST) if dt.tzinfo is None else dt.astimezone(IST)

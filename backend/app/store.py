@@ -23,14 +23,16 @@ CREATE TABLE IF NOT EXISTS trades (
   entry_price REAL NOT NULL, entry_time TEXT NOT NULL, entry_underlying REAL,
   stop_premium REAL, target_premium REAL, stop_underlying REAL, target_underlying REAL, flat_by TEXT,
   status TEXT NOT NULL, ltp REAL, ltp_time TEXT, underlying_ltp REAL,
-  exit_price REAL, exit_time TEXT, exit_reason TEXT, gross_pnl REAL, charges REAL, net_pnl REAL);
+  exit_price REAL, exit_time TEXT, exit_reason TEXT, gross_pnl REAL, charges REAL, net_pnl REAL,
+  no_progress_bars INTEGER);
 CREATE INDEX IF NOT EXISTS trades_date ON trades(date);
 CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value TEXT);
 """
 
 TRADE_FIELDS = ("id", "signal_id", "date", "strategy", "symbol", "direction", "tradingsymbol", "token", "segment",
                 "instrument", "lots", "quantity", "order_qtys", "entry_price", "entry_time", "entry_underlying",
-                "stop_premium", "target_premium", "stop_underlying", "target_underlying", "flat_by", "status")
+                "stop_premium", "target_premium", "stop_underlying", "target_underlying", "flat_by", "status",
+                "no_progress_bars")
 EXECUTABLE = ("EXECUTED", "EXECUTABLE")
 
 
@@ -41,6 +43,10 @@ class Store:
         self.db.row_factory = sqlite3.Row
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.executescript(SCHEMA)
+        cols = {r[1] for r in self.db.execute("PRAGMA table_info(trades)")}
+        if "no_progress_bars" not in cols:                 # a database from before in-exit's no-progress exit
+            with self.db:
+                self.db.execute("ALTER TABLE trades ADD COLUMN no_progress_bars INTEGER")
 
     def _rows(self, sql, args=()):
         with self.lock:
@@ -97,7 +103,7 @@ class Store:
         with self.lock, self.db:
             self.db.execute("INSERT INTO trades (%s) VALUES (%s)" % (", ".join(TRADE_FIELDS),
                                                                     ", ".join("?" * len(TRADE_FIELDS))),
-                            [row[k] for k in TRADE_FIELDS])
+                            [row.get(k) for k in TRADE_FIELDS])
             self.db.execute("UPDATE signals SET status = 'EXECUTED', reason = NULL, trade_id = ? WHERE id = ?",
                             (t["id"], signal_id))
 

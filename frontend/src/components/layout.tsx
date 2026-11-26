@@ -1,4 +1,4 @@
-import { BarChart3, Monitor, Settings as SettingsIcon, TrendingUp } from "lucide-react";
+import { BarChart3, FlaskConical, Monitor, Settings as SettingsIcon, TrendingUp, Wrench } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { token } from "../services/api";
 import { useTraderStore } from "../store/useTraderStore";
@@ -61,6 +61,8 @@ const NAV = [
   { to: "/", label: "Dashboard", icon: BarChart3 },
   { to: "/signals", label: "Signals", icon: Monitor },
   { to: "/positions", label: "Trades", icon: TrendingUp },
+  { to: "/backtest", label: "Backtest", icon: FlaskConical },
+  { to: "/skills", label: "Skills", icon: Wrench },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 

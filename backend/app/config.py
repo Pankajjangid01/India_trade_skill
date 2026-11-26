@@ -1,3 +1,4 @@
+import json
 import os
 from pathlib import Path
 
@@ -17,7 +18,12 @@ APP_NAME = os.environ.get("APP_NAME", "Indian Day Trader")
 LOG_LEVEL = os.environ.get("LOG_LEVEL", "INFO").upper()
 HOST = os.environ.get("HOST", "127.0.0.1")
 PORT = int(os.environ.get("PORT", 8000))
-CORS_ORIGINS = [o.strip() for o in os.environ.get("CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
+_raw = os.environ.get("CORS_ORIGINS", "http://localhost:5173").strip()
+try:
+    _parsed = json.loads(_raw)
+    CORS_ORIGINS = [str(o).strip() for o in _parsed] if isinstance(_parsed, list) else [o.strip() for o in _raw.split(",") if o.strip()]
+except (json.JSONDecodeError, TypeError):
+    CORS_ORIGINS = [o.strip() for o in _raw.split(",") if o.strip()]
 SKILL_PACK_ROOT = str(Path(os.environ.get("SKILL_PACK_ROOT") or PROJECT_ROOT / "skillpack").resolve())
 TRADER_DIR = str(Path(os.environ.get("TRADER_DIR") or PROJECT_ROOT / "trader").resolve())
 # start the engine with the backend unless the user's last action was Stop

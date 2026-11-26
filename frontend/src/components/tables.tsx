@@ -3,6 +3,30 @@ import { api } from "../services/api";
 import type { Signal, StrategyStats, Trade } from "../store/useTraderStore";
 import { Badge, Direction, Empty, STATUS_LABEL, STATUS_TONE, StrategyBadge, inr, num, pnlClass, timeIST } from "./ui";
 
+// the skill pack's pre-trade checks on a signal: the time machine's replay and in-risk's PASS / BLOCK
+const Checks = ({ m }: { m: any }) => {
+  const t = m?.timemachine;
+  const r = m?.risk;
+  if (!t && !r) return <span className="text-slate-300">—</span>;
+  return (
+    <div className="flex flex-col gap-1">
+      {t && (
+        <Badge
+          tone={!t.ok ? "red" : t.trades ? "green" : "slate"}
+          title={t.reason || ""}
+        >
+          TM {t.trades ? `${t.expectancy_r >= 0 ? "+" : ""}${num(t.expectancy_r, 2)}R / ${t.trades}` : "skipped"}
+        </Badge>
+      )}
+      {r && (
+        <Badge tone={r.verdict === "PASS" ? "green" : "red"} title={(r.reasons || []).concat(r.advisory || []).join("\n")}>
+          Risk {r.verdict}
+        </Badge>
+      )}
+    </div>
+  );
+};
+
 const th = "pb-2 pr-3 text-xs font-semibold text-slate-500 text-left whitespace-nowrap";
 const td = "py-2 pr-3 whitespace-nowrap";
 
@@ -14,7 +38,7 @@ export const SignalsTable = ({ rows, empty = "No signals yet." }: { rows: Signal
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200">
-            {["Bar close", "Strategy", "Symbol", "Direction", "Entry (index)", "Stop", "Target", "Status", "Reason / trade", "Seen"].map((h) => (
+            {["Bar close", "Strategy", "Symbol", "Direction", "Entry (index)", "Stop", "Target", "Status", "Checks", "Reason / trade", "Seen"].map((h) => (
               <th key={h} className={th}>{h}</th>
             ))}
           </tr>
@@ -30,6 +54,7 @@ export const SignalsTable = ({ rows, empty = "No signals yet." }: { rows: Signal
               <td className={td}>{num(s.stop_underlying)}</td>
               <td className={td}>{num(s.target_underlying)}</td>
               <td className={td}><Badge tone={STATUS_TONE[s.status]}>{STATUS_LABEL[s.status] || s.status}</Badge></td>
+              <td className={td}><Checks m={s.meta} /></td>
               <td className="py-2 pr-3 text-xs text-slate-600 max-w-md">
                 {s.trade_id ? <span className="font-medium text-slate-900">{s.trade_id} {s.meta?.tradingsymbol}</span> : s.reason}
                 {s.note && <div className="text-slate-400">{s.note}</div>}

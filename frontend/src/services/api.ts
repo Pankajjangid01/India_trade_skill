@@ -45,4 +45,11 @@ export const api = {
   daily: (days = 30) => call<any[]>("GET", `/stats/daily?days=${days}`),
   settings: () => call<any>("GET", "/settings"),
   saveSettings: (s: unknown) => call<any>("POST", "/settings", s),
+  skills: () => call<any>("GET", "/skills"),
+  runSkill: (skill: string, command: string, args: Record<string, unknown>) =>
+    call<any>("POST", `/skills/${encodeURIComponent(skill)}/${encodeURIComponent(command)}`, { args }),
+  lastSkill: (skill: string, command: string) =>
+    call<any>("GET", `/skills/${encodeURIComponent(skill)}/${encodeURIComponent(command)}`),
+  backtest: (body: { symbol: string; strategy: string; days: number; overrides: Record<string, unknown> }) =>
+    call<any>("POST", "/backtest", body),
 };

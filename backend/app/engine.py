@@ -19,6 +19,7 @@ import argparse
 import contextlib
 import datetime
 import io
+import json
 import logging
 import os
 import subprocess
@@ -26,9 +27,9 @@ import sys
 import threading
 import time
 
-from app import config, paper
+from app import config, paper, skills, timemachine
 from app import strategies as strat
-from app.sp import FEED_SCRIPT, chain, firstrun, smart
+from app.sp import FEED_SCRIPT, chain, exitplan, firstrun, risk, size, smart, tm
 from app.store import Store
 
 log = logging.getLogger("engine")
@@ -38,7 +39,10 @@ QUOTE_EVERY_SEC = 5
 BAR_RETRY_SEC = 10
 BAR_WAIT_SEC = 120          # evaluate anyway when the newest bar is this late
 LOGIN_RETRY_SEC = 60
+ALERTS_EVERY_SEC = 60
+FRESH_WAIT_SEC = 5          # in-risk's stale-data check: wait this long for fresh option and index ticks
 DEFAULT_SYMBOLS = ["NIFTY", "SENSEX", "BANKNIFTY"]
+SKILL_IO = threading.Lock()  # contextlib.redirect_stdout is process-wide: one in-process skill call at a time
 
 
 class EngineError(Exception):
@@ -176,6 +180,8 @@ class Engine:
         self.day, self.facts, self.prev_bars, self.prev_close = None, {}, {}, {}
         self.market, self.last_eval, self.next_eval, self.next_quote, self.quote_cache = {}, {}, {}, {}, {}
         self.subscribed = None
+        self.tm_window, self.tm_cache, self.master_rows, self.bars = None, {}, None, {}
+        self.background, self.news_day, self.next_alerts = skills.Background(), None, 0.0         # in-timemachine: the rolling window store, verdicts by day
         self.status = {"phase": None, "phase_reason": None, "last_cycle_ist": None, "last_error": None,
                        "errors": 0, "started_at": None, "cycles": 0}
         self.angel = {"logged_in": False, "session_date": None, "last_ok_ist": None, "last_error": None}
@@ -261,8 +267,24 @@ class Engine:
         self.update_subscriptions(cfg)
         self.update_market(now, cfg)
         self.monitor(now, cfg)
+        self.scheduled_skills(now, cfg)
         if ph == "open":
             self.scan(now, cfg)
+
+    def scheduled_skills(self, now, cfg):
+        """in-news once a trading day from the pre-open (news.json: events, ban list, flags), in-alerts every
+        ALERTS_EVERY_SEC while trades filled by hand with in-ticket are open. Each in its own thread."""
+        auto = cfg.get("skills") or {}
+        day = now.date().isoformat()
+        if auto.get("news_daily", True) and self.news_day != day:
+            if self.background.start("in-news", "run", None, self.trader):
+                self.news_day = day
+        if auto.get("alerts", True) and time.time() >= self.next_alerts and now.strftime("%H:%M") >= "09:15":
+            self.next_alerts = time.time() + ALERTS_EVERY_SEC
+            journal = (smart.read_json(self.p["journal"]) or {}).get("trades", [])
+            if any(t.get("date") == day and t.get("fill_price") is not None and t.get("exit_price") is None
+                   for t in journal):
+                self.background.start("in-alerts", "check", None, self.trader)
 
     def symbols(self, cfg):
         syms = [s.upper() for s in ((cfg.get("paper") or {}).get("symbols") or DEFAULT_SYMBOLS)]
@@ -300,13 +322,23 @@ class Engine:
                 continue
             exps = f.get("expiries") or []
             facts[s] = {"token": str(f["index_token"]), "segment": f["index_segment"],
-                        "expiry_today": bool(exps) and exps[0][0] == day}
+                        "expiry_today": bool(exps) and exps[0][0] == day,
+                        "expiries": sorted({str(smart.expiry_date(r.get("expiry"))) for r in rows
+                                            if r.get("instrumenttype") == "OPTIDX" and r.get("name") == s
+                                            and smart.expiry_date(r.get("expiry"))})}
+        names = set(facts)
+        # what in-risk needs from the master: today's index options and the indices themselves
+        self.master_rows = [r for r in rows if r.get("name") in names and r.get("instrumenttype") in ("OPTIDX", "AMXIDX")]
         del rows
         if self.day != day:
             self.prev_bars, self.prev_close, self.last_eval, self.next_eval = {}, {}, {}, {}
+            self.tm_cache, self.bars = {}, {}
         self.day, self.facts = day, facts
         log.info("instrument master loaded for %s: %s", day,
                  ", ".join("%s token %s" % (s, f["token"]) for s, f in facts.items()))
+        if timemachine.settings(cfg)["enabled"]:
+            for s in facts:                              # roll the 60-day windows now, not at the first signal
+                self.timemachine_window(s, now, cfg, cal)
 
     def update_subscriptions(self, cfg):
         items = [{"segment": self.facts[s]["segment"], "token": self.facts[s]["token"], "mode": "quote"}
@@ -384,6 +416,8 @@ class Engine:
             und = (self.market.get(t["symbol"]) or {}).get("ltp")
             self.store.mark(t["id"], opt, now.isoformat() if opt else None, und)
             reason = paper.exit_reason(t, opt, und, hm)
+            if not reason and paper.no_progress(t, self.bars.get(t["symbol"]), now):
+                reason = "NO_PROGRESS"
             if not reason and hm >= "15:30":
                 reason = "TIME_EXIT"
             if not reason:
@@ -434,6 +468,7 @@ class Engine:
             f = self.facts[s]
             d = smart.day_bars(self.trader, f["segment"], f["token"], 5, now, self.client)
             bars = strat.clean_bars(d["bars"])
+            self.bars[s] = bars                             # for in-exit's no-progress exit in monitor()
             m = self.market.setdefault(s, {"symbol": s})
             m.update(bars_source=d["source"], bars=len(bars), last_bar_ist=bars[-1]["start_ist"] if bars else None,
                      bars_note=d.get("partial"))
@@ -487,8 +522,19 @@ class Engine:
                "underlying_ltp": (self.market.get(sig["symbol"]) or {}).get("ltp"),
                "auto_execute": (cfg.get("paper") or {}).get("auto_execute", True), "s": s}
         status, reason = paper.gate(sig, now, cfg, ctx)
+        meta = None
+        if status in ("EXECUTE", "EXECUTABLE") and timemachine.settings(cfg)["enabled"] and \
+                not self.store.has_signal(sig["id"]):
+            doc = self.timemachine_verdict(sig["symbol"], sig["strategy"], now, cfg)
+            log.info("TIME MACHINE %s %s: %s", "BLOCK" if not doc["ok"] else "PASS" if doc["data"] else "SKIP", sig["id"],
+                     doc["reason"])
+            sig["timemachine"] = timemachine.summary(doc)
+            meta = {"timemachine": sig["timemachine"]}
+            if not doc["ok"]:
+                status, reason = "REJECTED", "time machine: %s" % doc["reason"]
         if not self.store.add_signal(sig, "EXECUTABLE" if status == "EXECUTE" else status,
-                                     "opening the paper trade" if status == "EXECUTE" else reason, now.isoformat()):
+                                     "opening the paper trade" if status == "EXECUTE" else reason, now.isoformat(),
+                                     meta):
             return
         log.info("SIGNAL %s %s %s %s @ %.2f: %s%s", sig["strategy"], sig["symbol"], sig["direction"],
                  sig["bar_close_ist"], sig["entry_underlying"], status, " (%s)" % reason if reason else "")
@@ -501,53 +547,102 @@ class Engine:
         self.emit("signal", next((x for x in self.store.signals(today, 50) if x["id"] == sig["id"]), sig))
 
     def execute(self, sig, now, cfg, s):
+        """The skill pack's pipeline for one signal, before any paper trade opens:
+        in-chain pick -> in-exit plan -> in-budget size -> in-timemachine (after charges) -> in-risk PASS/BLOCK."""
         sym, side = sig["symbol"], sig["direction"]
         a = argparse.Namespace(trader=self.trader, underlying=sym, direction=side, now=None, offline=None, cmd="pick")
         out = io.StringIO()
         try:
-            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
+            with SKILL_IO, contextlib.redirect_stdout(out), contextlib.redirect_stderr(out):
                 rc = chain.cmd_pick(a)
         except smart.SmartError as e:
             rc, out = 1, io.StringIO(str(e))
         text = out.getvalue().strip().splitlines()
-        smart.subscribe(self.trader, "in-chain:" + sym, [])     # the pick's chain tokens: the feed need not keep them
+        try:
+            self._execute_picked(sig, now, cfg, s, rc, text)
+        finally:
+            smart.subscribe(self.trader, "in-chain:" + sym, [])  # the pick's chain tokens: kept until in-risk ran
+            smart.subscribe(self.trader, "engine:pending", [])   # an opened trade is in the engine's own list now
+
+    def _reject(self, sig, reason, meta=None):
+        self.store.set_signal(sig["id"], "REJECTED", reason[:600], meta=meta)
+        log.info("REJECTED %s: %s", sig["id"], reason)
+
+    def _execute_picked(self, sig, now, cfg, s, rc, text):
+        sym, side = sig["symbol"], sig["direction"]
+        meta = {"timemachine": sig.get("timemachine")} if sig.get("timemachine") else {}
         if rc != 0:
-            self.store.set_signal(sig["id"], "REJECTED", "no option passed the pick rules: %s" % (
-                text[-1] if text else "in-chain refused")[:300])
-            return
+            return self._reject(sig, "no option passed the pick rules: %s" % (text[-1] if text else "in-chain refused"),
+                                meta or None)
         pick = smart.read_json(self.p["pick"]) or {}
         inst = pick.get("instrument") or {}
         if pick.get("underlying") != sym or pick.get("direction") != side or \
                 (now - smart.parse_ist(pick["as_of_ist"])).total_seconds() > 60:
-            self.store.set_signal(sig["id"], "REJECTED", "pick.json does not match this signal")
-            return
+            return self._reject(sig, "pick.json does not match this signal", meta or None)
         entry = paper.valid_price(pick.get("ask")) or paper.valid_price(pick.get("premium"))
         if entry is None:
-            self.store.set_signal(sig["id"], "REJECTED", "no valid option price for %s" % inst.get("tradingsymbol"))
-            return
-        pstop, ptarget = paper.premium_plan(entry, inst, cfg, s["target_r"])
+            return self._reject(sig, "no valid option price for %s" % inst.get("tradingsymbol"), meta or None)
+        meta.update(tradingsymbol=inst.get("tradingsymbol"),
+                    pick={k: pick.get(k) for k in ("premium", "bid", "ask", "spread_pct", "delta", "volume", "oi",
+                                                   "greeks_source", "one_lot_cost_inr")})
+
+        # in-exit: the plan (premium stop and target, flat-by, no-progress), from the engine's own entry.json
+        try:
+            plan = self.exit_plan(sig, s, entry, cfg, now)
+        except smart.SmartError as e:
+            return self._reject(sig, "in-exit refused: %s" % e, meta)
+        pstop, ptarget = plan["premium_stop"], plan["target_premium"]
+        meta["plan"] = {k: plan.get(k) for k in ("premium_stop", "target_premium", "underlying_stop",
+                                                 "target_underlying", "flat_by", "no_progress_bars", "r_value_inr",
+                                                 "in_exit_underlying_stop", "in_exit_check")}
+
+        # in-budget: lots from the max loss, charges included
         ch = smart.read_json(self.p["charges"], {}) or {}
         z = paper.sizing(entry, pstop, inst, cfg, ch)
-        meta = {"pick": {k: pick.get(k) for k in ("premium", "bid", "ask", "spread_pct", "delta", "volume", "oi",
-                                                    "greeks_source", "one_lot_cost_inr")},
-                "tradingsymbol": inst.get("tradingsymbol"), "lots": z["lots"], "sized_by": z["decided"],
-                "max_loss_inr": float(z["max_loss"]), "risk_inr": float(z["premium_risk"] + z["charges"])}
+        meta.update(lots=z["lots"], sized_by=z["decided"], max_loss_inr=float(z["max_loss"]),
+                    risk_inr=float(z["premium_risk"] + z["charges"]))
         if z["lots"] < 1:
-            self.store.set_signal(sig["id"], "REJECTED", "one lot of %s risks more than the max loss Rs %s (%s)" % (
-                inst.get("tradingsymbol"), z["max_loss"], z["decided"]), meta=meta)
-            return
-        sess = cfg.get("session") or {}
-        flat = sess.get("expiry_day_flat_by", "14:45") if inst.get("expiry") == self.day else sess.get("flat_by", "15:10")
-        if now.strftime("%H:%M") >= flat:
-            self.store.set_signal(sig["id"], "REJECTED", "past the flat-by time %s" % flat, meta=meta)
-            return
-        t = {"id": self.store.next_trade_id(self.day), "signal_id": sig["id"], "date": self.day,
+            return self._reject(sig, "one lot of %s risks more than the max loss Rs %s (%s)" % (
+                inst.get("tradingsymbol"), z["max_loss"], z["decided"]), meta)
+
+        # in-timemachine again, now with one lot's charges in R taken off every replayed trade
+        if timemachine.settings(cfg)["enabled"]:
+            gross = self.timemachine_verdict(sym, sig["strategy"], now, cfg)
+            try:
+                charges_r = tm.plan_charges(plan, ch)["in_r"]
+            except smart.SmartError:
+                charges_r = None
+            if charges_r is not None and gross.get("data"):
+                net = timemachine.with_charges(gross, charges_r, cfg)
+                meta["timemachine"] = timemachine.summary(net)
+                meta["timemachine"]["charges_r"] = charges_r
+                log.info("TIME MACHINE %s %s after charges: %s", "PASS" if net["ok"] else "BLOCK", sig["id"],
+                         net["reason"])
+                if not net["ok"]:
+                    return self._reject(sig, "time machine: %s" % net["reason"], meta)
+
+        # in-risk: every check on the ticket in-budget would draft; a BLOCK is final
+        tid = self.store.next_trade_id(self.day)
+        ticket = size.draft(plan, z, tid, now)
+        fresh = self.await_fresh_ticks(inst, sym, cfg)
+        if fresh:
+            meta["feed_wait"] = fresh
+        result = self.risk_check(ticket, plan, cfg, smart.now_ist())
+        meta["risk"] = {"verdict": result["verdict"], "reasons": result["reasons"],
+                        "advisory": result.get("advisory", []),
+                        "checks": [{"name": c["name"], "ok": c["ok"], "detail": c["detail"]} for c in result["checks"]]}
+        log.info("RISK %s %s%s", result["verdict"], sig["id"], ": " + "; ".join(result["reasons"]) if result["reasons"] else "")
+        if result["verdict"] == "BLOCK":
+            return self._reject(sig, "in-risk BLOCK: %s" % "; ".join(result["reasons"]), meta)
+
+        flat = plan["flat_by"]
+        t = {"id": tid, "signal_id": sig["id"], "date": self.day,
              "strategy": sig["strategy"], "symbol": sym, "direction": side, "tradingsymbol": inst["tradingsymbol"],
              "token": str(inst["token"]), "segment": inst["segment"], "instrument": inst, "lots": z["lots"],
              "quantity": sum(z["qtys"]), "order_qtys": z["qtys"], "entry_price": entry, "entry_time": now.isoformat(),
              "entry_underlying": sig["entry_underlying"], "stop_premium": pstop, "target_premium": ptarget,
              "stop_underlying": sig["stop_underlying"], "target_underlying": sig["target_underlying"],
-             "flat_by": flat, "status": "OPEN"}
+             "flat_by": flat, "status": "OPEN", "no_progress_bars": plan.get("no_progress_bars")}
         self.store.open_trade(t, sig["id"])
         self.store.set_signal(sig["id"], "EXECUTED", None, t["id"], meta)
         log.info("PAPER ENTRY %s %s %s %s x%d @ %.2f SL %.2f TGT %.2f (underlying SL %.2f TGT %.2f)", t["id"],
@@ -555,6 +650,155 @@ class Engine:
                  t["stop_underlying"], t["target_underlying"])
         self.emit("trade_opened", self.store.trade(t["id"]))
         self.update_subscriptions(cfg)
+
+    # ------------------------------------------------------------ in-exit and in-risk
+    def engine_paths(self):
+        """smart.trader_paths with entry.json and plan.json moved to state/engine/: the engine's pipeline never
+        overwrites the files of a trade the user plans by hand with the skills."""
+        d = os.path.join(self.p["state"], "engine")
+        os.makedirs(d, exist_ok=True)
+        return dict(self.p, entry=os.path.join(d, "entry.json"), plan=os.path.join(d, "plan.json"))
+
+    def exit_plan(self, sig, s, premium, cfg, now):
+        """in-exit's make_plan for this signal: writes the in-entry shaped entry.json it reads, returns plan.json.
+        The underlying stop and target stay the signal's (ORB is cross-checked against in-exit's or-mid/or-opposite;
+        EMA_PULLBACK's swing stop is not an in-exit rule, so it is given to in-exit as the equal percentage)."""
+        p = self.engine_paths()
+        rng = sig.get("opening_range") or {"high": sig["entry_underlying"], "low": sig["entry_underlying"]}
+        smart.write_json(p["entry"], {
+            "created_by": "in-entry", "symbol": sig["symbol"], "date": sig["date"], "status": "triggered",
+            "direction": sig["direction"], "trigger_level": rng["high"] if sig["direction"] == "bullish" else rng["low"],
+            "bar_start_ist": sig["bar_start_ist"], "bar_close_ist": sig["bar_close_ist"],
+            "bar_close": sig["entry_underlying"], "opening_range": dict(rng, start="09:15", end=(
+                cfg.get("session") or {}).get("range_end", "09:30")), "filters_applied": [],
+            "notes": ["paper engine %s signal %s" % (sig["strategy"], sig["id"])], "source": "engine",
+            "as_of_ist": now.isoformat()})
+        orb = sig["strategy"] == "ORB" and bool(sig.get("opening_range"))
+        if orb:
+            stop = s.get("stop_rule") or "or-mid"
+        else:
+            stop = "pct:%.6f" % (abs(sig["entry_underlying"] - sig["stop_underlying"]) / sig["entry_underlying"] * 100)
+        a = argparse.Namespace(trader=self.trader, stop=stop, entry_premium=premium, offline=None, now=None)
+        pcfg = dict(cfg, exit=dict(cfg.get("exit") or {}, target_r=float(s.get("target_r") or 2.0)))
+        plan, _, _ = exitplan.make_plan(a, p, pcfg, now)
+        plan["in_exit_underlying_stop"] = plan["underlying_stop"]
+        if orb:
+            plan["in_exit_check"] = "match" if abs(plan["underlying_stop"] - sig["stop_underlying"]) < 0.001 else \
+                "in-exit stop %.2f, engine %.2f" % (plan["underlying_stop"], sig["stop_underlying"])
+            if plan["in_exit_check"] != "match":
+                log.warning("in-exit cross-check %s: %s", sig["id"], plan["in_exit_check"])
+        plan.update(underlying_stop=sig["stop_underlying"], target_underlying=sig["target_underlying"])
+        smart.write_json(p["plan"], plan)
+        return plan
+
+    def await_fresh_ticks(self, inst, sym, cfg):
+        """in-risk's stale_data check reads the feed's last tick of the option and its index. A just-picked
+        option may not have ticked yet: subscribe it and wait up to FRESH_WAIT_SEC for both ticks to be younger
+        than freshness.stale_tick_sec. None without a live feed (in-risk then judges the pick's own age)."""
+        if not self.feed.status()["alive"]:
+            return None
+        tokens = [str(inst["token"])] + ([self.facts[sym]["token"]] if sym in self.facts else [])
+        smart.subscribe(self.trader, "engine:pending", [{"segment": inst["segment"], "token": str(inst["token"]),
+                                                         "mode": "quote"}])
+        stale_ms = float((cfg.get("freshness") or {}).get("stale_tick_sec", 3)) * 1000
+        t0 = time.time()
+        while True:
+            latest = smart.read_latest(self.p["db"], tokens, int(time.time() * 1000), stale_ms)
+            if all(t in latest and not latest[t]["stale"] for t in tokens):
+                return "fresh ticks after %.1f s" % (time.time() - t0)
+            if time.time() - t0 >= FRESH_WAIT_SEC or self.stop_event.is_set():
+                late = [t for t in tokens if t not in latest or latest[t]["stale"]]
+                log.warning("no fresh tick for %s within %d s: in-risk decides on the feed as it is", late,
+                            FRESH_WAIT_SEC)
+                return "still stale after %d s: %s" % (FRESH_WAIT_SEC, ", ".join(late))
+            self.stop_event.wait(0.2)
+
+    def risk_check(self, ticket, plan, cfg, now):
+        """in-risk's verdict() on the ticket, with the paper journal as today's trades. Checks named in
+        risk.engine_advisory_checks are recorded but do not block (default: none, every check blocks)."""
+        p = self.p
+        today = now.date().isoformat()
+        journal = [{"date": t["date"], "fill_price": t["entry_price"], "net_pnl_inr": t.get("net_pnl"),
+                    "exit_time_ist": (t.get("exit_time") or "")[11:16] or None}
+                   for t in self.store.trades(today) if t.get("entry_price") is not None]
+        events = smart.read_json(p["events"])
+        rows = self.master_rows or []
+        x = {"cfg": cfg, "capital": smart.require_account(cfg), "now": now,
+             "calendar": smart.read_json(p["calendar"], {}) or {}, "trades": journal, "ban": risk.ban_list(p["ban"]),
+             "events": None if events is None else events.get("events", []), "pick": smart.read_json(p["pick"]),
+             "entry": smart.read_json(self.engine_paths()["entry"]), "db": p["db"], "rows": rows,
+             "master": {(smart.segment(r.get("exch_seg")), str(r.get("token"))): r for r in rows}}
+        try:
+            result = risk.verdict(ticket, x)
+        except smart.SmartError as e:                       # a limit missing from config.json: never a silent PASS
+            return {"verdict": "BLOCK", "reasons": ["config: %s" % e], "checks": [], "checked_at_ist": now.isoformat()}
+        soft = set((cfg.get("risk") or {}).get("engine_advisory_checks") or [])
+        hard = [c for c in result["checks"] if not c["ok"] and c["name"] not in soft]
+        result["advisory"] = ["%s: %s" % (c["name"], c["detail"]) for c in result["checks"]
+                              if not c["ok"] and c["name"] in soft]
+        result["verdict"] = "BLOCK" if hard else "PASS"
+        result["reasons"] = ["%s: %s" % (c["name"], c["detail"]) for c in hard]
+        return result
+
+    # ------------------------------------------------------------ in-timemachine
+    def timemachine_window(self, sym, now, cfg, cal=None):
+        """The rolling window of the last N closed trading days for sym: drops the oldest, fetches only new or
+        missing days. Never raises: a failure comes back as an empty window that names it."""
+        cal = cal if cal is not None else (smart.read_json(self.p["calendar"], {}) or {})
+        f = self.facts.get(sym)
+        if not f:
+            return {"dates": [], "bars": {}, "missing": [], "partial": "%s is not in today's instrument master" % sym}
+        try:
+            if self.tm_window is None:
+                self.tm_window = timemachine.Window(self.trader)
+            end = smart.previous_trading_day(now.date(), cal).isoformat()
+            return timemachine.ensure_timemachine_window(
+                self.trader, end, sym, f["segment"], f["token"], self.client, now,
+                int(timemachine.settings(cfg)["days"]), cal, store=self.tm_window)
+        except Exception as e:                               # a broker or disk failure never ends the cycle
+            log.warning("time machine window for %s failed: %s", sym, e)
+            return {"dates": [], "bars": {}, "missing": [], "partial": "%s: %s" % (type(e).__name__, str(e)[:200])}
+
+    def timemachine_verdict(self, sym, strategy, now, cfg):
+        """in-timemachine's replay of `strategy` on sym's window: {"ok", "reason", "data"}, once per day and rule."""
+        key = json.dumps([self.day, sym, strategy, strat.strategy_cfg(cfg, strategy), cfg.get("session"),
+                          timemachine.settings(cfg)], sort_keys=True, default=str)
+        if key in self.tm_cache:
+            return self.tm_cache[key]
+        window = self.timemachine_window(sym, now, cfg)
+        doc = timemachine.check(self.trader, sym, strategy, cfg, window, (self.facts.get(sym) or {}).get("expiries", ()))
+        if doc["data"] is not None:                          # an unavailable replay is retried at the next signal
+            self.tm_cache[key] = doc
+        return doc
+
+    # ------------------------------------------------------------ the backtest
+    def backtest(self, symbol, strategy, days, overrides=None):
+        """Replay `strategy` on `symbol`'s last `days` closed trading days with these strategy settings
+        (the saved ones, with `overrides` on top). History needs a broker session: one is opened if the
+        engine has none (outside market hours too: history is exempt from the market-hours rule)."""
+        now = smart.now_ist()
+        cfg = smart.load_config(self.trader)
+        cal = smart.read_json(self.p["calendar"], {}) or {}
+        if symbol not in DEFAULT_SYMBOLS:
+            raise EngineError("symbol must be one of %s" % ", ".join(DEFAULT_SYMBOLS))
+        if overrides:
+            cfg = dict(cfg, strategies=dict(cfg.get("strategies") or {}, **{
+                strategy: {**((cfg.get("strategies") or {}).get(strategy) or {}), **overrides}}))
+        with self.op:
+            if not self.ensure_client(now):
+                raise EngineError("no broker session for history: %s" % (self.angel.get("last_error") or "login failed"))
+            if symbol not in self.facts or self.day != now.date().isoformat():
+                self.ensure_day(now, dict(cfg, paper=dict(cfg.get("paper") or {}, symbols=sorted(
+                    set(self.symbols(cfg)) | {symbol}))), cal)
+            f = self.facts.get(symbol)
+            client = self.client
+        if not f:
+            raise EngineError("%s is not in today's instrument master" % symbol)
+        try:
+            return timemachine.backtest(self.trader, symbol, f["segment"], f["token"], client, cfg, strategy, days,
+                                        now, cal, f.get("expiries", ()))
+        except smart.SmartError as e:
+            raise EngineError(str(e))
 
     # ------------------------------------------------------------ the UI's view
     def snapshot(self):

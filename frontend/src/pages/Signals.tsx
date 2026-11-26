@@ -50,7 +50,7 @@ export const SignalsPage = () => {
         <SignalsTable rows={rows} empty="No signals for this selection." />
         <p className="text-xs text-slate-400 mt-3">
           Executed: a paper trade was opened. Executable: valid, but auto-execute was off. Entry Cutoff: generated after the
-          entry cutoff, recorded only. Rejected: a risk rule, a stale bar, a conflicting position or the option pick said no.
+          entry cutoff, recorded only. Rejected: a risk rule, a stale bar, a conflicting position, the option pick, in-exit, the time machine (TM: the 60-day replay of the strategy, average R per trade after charges) or in-risk (a BLOCK) said no. Hover a check for its numbers.
         </p>
       </Card>
     </>

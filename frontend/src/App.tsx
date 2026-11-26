@@ -8,6 +8,8 @@ import { Dashboard } from "./pages/Dashboard";
 import { SettingsPage } from "./pages/Settings";
 import { SignalsPage } from "./pages/Signals";
 import { PositionsPage } from "./pages/Positions";
+import { BacktestPage } from "./pages/Backtest";
+import { SkillsPage } from "./pages/Skills";
 
 const loadState = () =>
   api.state().then(useTraderStore.getState().setSnap).catch(() => useTraderStore.getState().setSocket("disconnected"));
@@ -66,6 +68,8 @@ export default function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/signals" element={<SignalsPage />} />
           <Route path="/positions" element={<PositionsPage />} />
+          <Route path="/backtest" element={<BacktestPage />} />
+          <Route path="/skills" element={<SkillsPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Route>
       </Routes>

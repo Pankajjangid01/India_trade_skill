@@ -5,6 +5,7 @@ Every trade BUYS an option (CE for bullish, PE for bearish), so P&L is always
 round_trip on trader/charges.json, split at the exchange freeze limit).
 """
 
+import datetime
 from decimal import Decimal
 
 from app.sp import smart, size
@@ -88,6 +89,25 @@ def exit_reason(t, opt_ltp, und_ltp, hm):
     if t.get("flat_by") and hm >= t["flat_by"]:
         return "TIME_EXIT"
     return None
+
+
+def no_progress(t, bars, now):
+    """in-exit's no-progress exit (as in-alerts watches it): True when the first `no_progress_bars` closed
+    5-minute underlying bars from the one holding the entry all closed without going beyond the entry
+    (above for bullish, below for bearish). Missing bars or bars not closed yet decide nothing (False)."""
+    n, level = t.get("no_progress_bars"), t.get("entry_underlying")
+    if not n or level is None or not bars:
+        return False
+    fill = smart.parse_ist(t["entry_time"])
+    m = fill.hour * 60 + fill.minute
+    first = 555 + max(0, (m - 555) // 5) * 5                      # 555 = 09:15, the bars' anchor
+    want = ["%02d:%02d" % divmod(first + 5 * i, 60) for i in range(int(n))]
+    got = {b["start_ist"]: b for b in bars if b.get("start_ist") in want}
+    up = t["direction"] == "bullish"
+    if any((b["close"] > level) if up else (b["close"] < level) for b in got.values()):
+        return False
+    last_close = smart.parse_ist("%s %s" % (t["date"], want[-1])) + datetime.timedelta(minutes=5)
+    return now >= last_close and len(got) == len(want)
 
 
 def pnl(entry, exit_price, qtys, segment, ch):
