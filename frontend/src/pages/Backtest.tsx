@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { api } from "../services/api";
 import { AlertBanner, Badge, Card, Direction, Empty, StatCard, num } from "../components/ui";
+import { CompareBacktest, SweepBacktest } from "./BacktestCompare";
 
 type Field = { key: string; label: string; step?: string; kind?: "number" | "text" | "select"; options?: string[] };
 
@@ -20,6 +21,17 @@ const FIELDS: Record<string, Field[]> = {
     { key: "min_risk_pct", label: "Min risk %", step: "0.01" },
     { key: "max_risk_pct", label: "Max risk %", step: "0.01" },
     { key: "target_r", label: "Target (R)", step: "0.1" },
+    { key: "max_trades_per_day", label: "Max trades / day", step: "1" },
+  ],
+  EMA_ORB: [
+    { key: "min_or_pct", label: "Min opening range % (0 = off)", step: "0.05" },
+    { key: "stop_method", label: "Stop method", kind: "select", options: ["ema", "atr", "swing"] },
+    { key: "atr_mult", label: "ATR multiple (atr)", step: "0.1" },
+    { key: "swing_bars", label: "Swing bars (swing)", step: "1" },
+    { key: "target_r", label: "Target (R)", step: "0.5" },
+    { key: "fast", label: "EMA fast", step: "1" },
+    { key: "slow", label: "EMA slow", step: "1" },
+    { key: "start_after", label: "Start after (HH:MM)", kind: "text" },
     { key: "max_trades_per_day", label: "Max trades / day", step: "1" },
   ],
 };
@@ -54,7 +66,7 @@ const Equity = ({ pts }: { pts: { cum_r: number; date: string; time: string }[] 
 
 const OUTCOME_TONE: Record<string, string> = { target: "green", stop: "red", flat_by: "slate" };
 
-export const BacktestPage = () => {
+const SingleBacktest = () => {
   const [symbol, setSymbol] = useState("NIFTY");
   const [strategy, setStrategy] = useState("ORB");
   const [days, setDays] = useState(60);
@@ -95,7 +107,6 @@ export const BacktestPage = () => {
   const trades = (res?.days || []).filter((t: any) => t.status === "trade");
   return (
     <>
-      <h1 className="text-2xl font-bold text-slate-900 mb-5">Backtest</h1>
       <Card title="Replay a strategy on past days">
         <form onSubmit={submit} className="grid grid-cols-2 md:grid-cols-6 gap-3 items-end">
           <label className="text-xs text-slate-500">Index
@@ -107,6 +118,7 @@ export const BacktestPage = () => {
             <select className={inp} value={strategy} onChange={(e) => setStrategy(e.target.value)}>
               <option value="ORB">Opening Range Breakout</option>
               <option value="EMA_PULLBACK">EMA Trend Pullback</option>
+              <option value="EMA_ORB">EMA + ORB Hybrid</option>
             </select>
           </label>
           <label className="text-xs text-slate-500">Trading days (20 to 250)
@@ -205,6 +217,33 @@ export const BacktestPage = () => {
           </Card>
         </>
       )}
+    </>
+  );
+};
+
+const TABS = [
+  { key: "compare", label: "Compare versions" },
+  { key: "sweep", label: "Optimize target & stop" },
+  { key: "single", label: "Single strategy" },
+];
+
+export const BacktestPage = () => {
+  const [tab, setTab] = useState("compare");
+  return (
+    <>
+      <h1 className="text-2xl font-bold text-slate-900 mb-4">Backtest</h1>
+      <div className="flex gap-2 mb-5">
+        {TABS.map((t) => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium border ${
+              tab === t.key ? "bg-indian-green/10 text-indian-green border-indian-green/20" : "border-slate-200 text-slate-600 hover:bg-slate-100"}`}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === "compare" && <CompareBacktest />}
+      {tab === "sweep" && <SweepBacktest />}
+      {tab === "single" && <SingleBacktest />}
     </>
   );
 };

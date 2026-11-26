@@ -27,6 +27,26 @@ EMA_PULLBACK  (trend continuation, complements ORB)
           direction waits `cooldown_bars` bars.
 ORB fires once per direction around the open; EMA_PULLBACK keeps finding
 entries in an established trend later in the day, where ORB is silent.
+
+EMA_ORB  (hybrid: EMA_PULLBACK confirmed by an opening-range breakout; a third strategy,
+          ORB and EMA_PULLBACK above are unchanged)
+  Range   high/low of the 09:15 to range_end bars. Width % = (high - low) / reference x 100,
+          reference = the OPEN of the 09:15 bar (the day's opening price, known at 09:15 and
+          the same in the backtest and live). Days narrower than min_or_pct are skipped
+          (0 turns the filter off: "EMA + ORB"; 0.35, the default: "EMA + ORB + minimum range").
+  Setup   the existing EMA_PULLBACK setup (ema_pullback_signals, same trend, pullback and resume
+          rules, same fast/slow/pullback/cooldown/start_after settings), found with its risk band
+          opened so the hybrid's own stop method decides the risk.
+  Confirm bullish only after a 5-minute bar has CLOSED above the range high, and the setup bar
+          itself closes above it (never inside the range); bearish mirrored below the low.
+  Stop    stop_method: "ema" (the EMA setup's own stop: the pullback swing over pullback_bars),
+          "atr" (atr_mult x ATR14 of the bars up to the setup bar), "swing" (the lowest low /
+          highest high of the last swing_bars bars). The risk must be min_risk_pct..max_risk_pct
+          of price, else the setup is skipped: a wider stop never makes a trade valid.
+  Target  entry +/- target_r x risk.
+  Day     at most max_trades_per_day (2); with stop_after_first_sl, a first trade that hits its
+          stop ends this strategy's day (paper.gate live, the replay in app/timemachine.py).
+ema_orb_evaluate() returns the signals AND every setup's accept/reject reason, for the UI.
 """
 
 from decimal import Decimal
@@ -41,7 +61,14 @@ STRATEGIES = {
                      "defaults": {"enabled": True, "fast": 9, "slow": 21, "pullback_bars": 3, "cooldown_bars": 6,
                                   "start_after": "09:45", "min_risk_pct": 0.05, "max_risk_pct": 0.6,
                                   "target_r": 2.0, "max_trades_per_day": 2}},
+    "EMA_ORB": {"name": "EMA Pullback + ORB Hybrid",
+                "defaults": {"enabled": False, "fast": 9, "slow": 21, "pullback_bars": 3, "cooldown_bars": 6,
+                             "start_after": "09:45", "min_risk_pct": 0.05, "max_risk_pct": 0.6, "min_or_pct": 0.35,
+                             "stop_method": "ema", "atr_mult": 1.5, "swing_bars": 10, "target_r": 2.0,
+                             "max_trades_per_day": 2, "stop_after_first_sl": True}},
 }
+STOP_METHODS = ("ema", "atr", "swing")
+ZERO_OK = {"min_or_pct"}          # settings where 0 is a valid value (it turns the filter off)
 
 
 def strategy_cfg(cfg, key):
@@ -168,6 +195,104 @@ def ema_pullback_signals(symbol, date, prev_bars, bars, s):
     return out
 
 
+def opening_range(bars, range_end="09:30"):
+    """{"high", "low", "ref", "pct", "complete"} of the 09:15..range_end bars; None before the first bar.
+    ref is the 09:15 bar's open; pct = (high - low) / ref x 100."""
+    inside = [b for b in bars if "09:15" <= b["start_ist"] < range_end]
+    if not inside:
+        return None
+    need = (int(range_end[:2]) * 60 + int(range_end[3:]) - 555) // BAR_MIN
+    hi, lo = max(b["high"] for b in inside), min(b["low"] for b in inside)
+    ref = inside[0]["open"]
+    return {"high": hi, "low": lo, "ref": ref, "pct": round((hi - lo) / ref * 100, 4), "complete": len(inside) >= need,
+            "start": "09:15", "end": range_end}
+
+
+def atr14(bars):
+    """The mean of the last 14 true ranges (fewer when there are fewer bars)."""
+    trs, prev = [], None
+    for b in bars:
+        trs.append(b["high"] - b["low"] if prev is None else
+                   max(b["high"] - b["low"], abs(b["high"] - prev), abs(b["low"] - prev)))
+        prev = b["close"]
+    last = trs[-14:]
+    return sum(last) / len(last) if last else 0.0
+
+
+def ema_orb_evaluate(symbol, date, prev_bars, bars, s, range_end="09:30"):
+    """EMA_ORB's signals for the day so far and the decision on every EMA setup:
+    (signals, {"opening_range", "breakout", "setups": [{bar, direction, accepted, reason}]})."""
+    bars = list(bars)
+    rng = opening_range(bars, range_end)
+    state = {"opening_range": rng, "breakout": {"bullish": None, "bearish": None}, "setups": []}
+    if rng is None:
+        return [], state
+    for b in bars:                                   # the first CLOSE beyond each edge after the range
+        if b["start_ist"] < range_end:
+            continue
+        if state["breakout"]["bullish"] is None and b["close"] > rng["high"]:
+            state["breakout"]["bullish"] = b["start_ist"]
+        if state["breakout"]["bearish"] is None and b["close"] < rng["low"]:
+            state["breakout"]["bearish"] = b["start_ist"]
+    raw = ema_pullback_signals(symbol, date, prev_bars, bars, dict(s, min_risk_pct=0.0, max_risk_pct=1e9))
+    allb = list(prev_bars) + bars
+    index = {b["start_ist"]: len(prev_bars) + k for k, b in enumerate(bars)}
+    method = s.get("stop_method", "ema")
+    out = []
+    for r in raw:
+        side, up, entry = r["direction"], r["direction"] == "bullish", r["entry_underlying"]
+        edge = rng["high"] if up else rng["low"]
+        seen = state["breakout"][side]
+
+        def decide(ok, reason):
+            state["setups"].append({"bar_start_ist": r["bar_start_ist"], "bar_close_ist": r["bar_close_ist"],
+                                    "direction": side, "entry": entry, "accepted": ok, "reason": reason})
+        if not rng["complete"]:
+            decide(False, "opening range %s-%s incomplete" % (rng["start"], rng["end"]))
+            continue
+        if rng["pct"] < float(s.get("min_or_pct", 0)):
+            decide(False, "opening range %.2f%% under min_or_pct %.2f%%: sideways day" % (rng["pct"],
+                                                                                    float(s["min_or_pct"])))
+            continue
+        if seen is None or seen > r["bar_start_ist"]:
+            decide(False, "no close %s the range %s %.2f yet" % ("above" if up else "below",
+                                                                  "high" if up else "low", edge))
+            continue
+        if not (entry > edge if up else entry < edge):
+            decide(False, "setup bar closed inside the opening range (%.2f vs %s %.2f)" % (
+                entry, "high" if up else "low", edge))
+            continue
+        i = index[r["bar_start_ist"]]
+        if method == "atr":
+            stop = entry - float(s.get("atr_mult", 1.5)) * atr14(bars[:i - len(prev_bars) + 1]) * (1 if up else -1)
+        elif method == "swing":
+            span = allb[max(0, i - int(s.get("swing_bars", 10)) + 1):i + 1]
+            stop = min(x["low"] for x in span) if up else max(x["high"] for x in span)
+        else:
+            stop = r["stop_underlying"]
+        risk_pct = abs(entry - stop) / entry * 100
+        if not float(s["min_risk_pct"]) <= risk_pct <= float(s["max_risk_pct"]):
+            decide(False, "%s stop risk %.2f%% outside %.2f%%..%.2f%%" % (method, risk_pct, float(s["min_risk_pct"]),
+                                                                       float(s["max_risk_pct"])))
+            continue
+        bar = allb[i]
+        sig = _signal("EMA_ORB", symbol, date, bar, side, stop, float(s["target_r"]),
+                      "EMA pullback beyond the opening range %.2f-%.2f (%.2f%%), breakout %s, %s stop" % (
+                          rng["low"], rng["high"], rng["pct"], seen, method))
+        if sig is None:
+            decide(False, "zero risk after rounding the stop")
+            continue
+        sig.update(opening_range={"high": rng["high"], "low": rng["low"]}, or_pct=rng["pct"], stop_method=method,
+                   breakout_bar=seen, ema=r.get("ema"))
+        decide(True, "accepted: %s" % sig["note"])
+        out.append(sig)
+    return out, state
+
+
+def ema_orb_signals(symbol, date, prev_bars, bars, s, range_end="09:30"):
+    return ema_orb_evaluate(symbol, date, prev_bars, bars, s, range_end)[0]
+
+
 def evaluate(cfg, symbol, date, prev_bars, bars, range_end="09:30"):
     """Every enabled strategy's signals for today's closed bars. prev_bars None (the previous day
     could not be fetched) skips EMA_PULLBACK: EMAs seeded on less data would give different signals."""
@@ -179,4 +304,7 @@ def evaluate(cfg, symbol, date, prev_bars, bars, range_end="09:30"):
     s = strategy_cfg(cfg, "EMA_PULLBACK")
     if s["enabled"] and prev_bars is not None:
         out += ema_pullback_signals(symbol, date, clean_bars(prev_bars), bars, s)
+    s = strategy_cfg(cfg, "EMA_ORB")
+    if s["enabled"] and prev_bars is not None:
+        out += ema_orb_signals(symbol, date, clean_bars(prev_bars), bars, s, range_end)
     return out

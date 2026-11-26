@@ -20,6 +20,18 @@ export interface StrategyStats {
   worst: number | null;
 }
 
+// EMA_ORB's live view per index (engine.hybrid_state, from the same function as its signals)
+export interface Hybrid {
+  enabled: boolean;
+  opening_range: { high: number; low: number; ref: number; pct: number; complete: boolean; start: string; end: string } | null;
+  min_or_pct: number;
+  range_ok: boolean;
+  breakout: string | null;
+  ema: { fast: number; slow: number; trend: string; period: number[] } | null;
+  setups: { bar_start_ist: string; bar_close_ist: string; direction: string; entry: number; accepted: boolean; reason: string }[];
+  prev_day: boolean;
+}
+
 export interface Signal {
   id: string;
   date: string;
@@ -120,6 +132,7 @@ export interface Snapshot {
     bars_source?: string | null;
     bars?: number;
     last_bar_ist?: string | null;
+    hybrid?: Hybrid | null;
   }[];
   config: {
     entry_start: string;

@@ -44,6 +44,10 @@ def gate(sig, now, cfg, ctx):
         return "REJECTED", "max trades per day reached (%d)" % max_trades
     if ctx["strategy_trades_today"] >= int(s.get("max_trades_per_day", max_trades)):
         return "REJECTED", "%s max trades per day reached (%d)" % (sig["strategy"], int(s["max_trades_per_day"]))
+    first = ctx.get("strategy_first_exit")
+    if s.get("stop_after_first_sl") and first and str(first).startswith("SL"):
+        return "REJECTED", "%s's first trade today hit its stop (%s): no more %s trades today" % (
+            sig["strategy"], first, sig["strategy"])
     max_loss = capital * float(acct.get("max_daily_loss_pct", 2.0)) / 100
     if ctx["realized_today"] <= -max_loss:
         return "REJECTED", "daily loss limit hit: realised %.2f, limit -%.2f" % (ctx["realized_today"], max_loss)

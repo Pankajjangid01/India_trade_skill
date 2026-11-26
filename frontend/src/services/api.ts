@@ -52,4 +52,6 @@ export const api = {
     call<any>("GET", `/skills/${encodeURIComponent(skill)}/${encodeURIComponent(command)}`),
   backtest: (body: { symbol: string; strategy: string; days: number; overrides: Record<string, unknown> }) =>
     call<any>("POST", "/backtest", body),
+  compare: (body: Record<string, unknown>) => call<any>("POST", "/backtest/compare", body),
+  sweep: (body: Record<string, unknown>) => call<any>("POST", "/backtest/sweep", body),
 };

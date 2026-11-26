@@ -35,6 +35,7 @@ export const SignalsPage = () => {
               <option value="ALL">All strategies</option>
               <option value="ORB">ORB</option>
               <option value="EMA_PULLBACK">EMA Pullback</option>
+              <option value="EMA_ORB">EMA + ORB Hybrid</option>
             </select>
             <select value={status} onChange={(e) => setStatus(e.target.value)} className={sel}>
               <option value="ALL">All statuses</option>

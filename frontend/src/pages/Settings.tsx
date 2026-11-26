@@ -60,7 +60,13 @@ export const SettingsPage = () => {
     return (
       <label key={k} className="block">
         <span className="text-sm text-slate-700">{label}</span>
-        {typeof v === "boolean" ? (
+        {k === "stop_method" ? (
+          <select value={v} onChange={(e) => set(sec, k, e.target.value, strat)} className={input}>
+            <option value="ema">ema (the EMA setup's swing over the pullback)</option>
+            <option value="atr">atr (atr_mult x ATR14)</option>
+            <option value="swing">swing (lowest low / highest high of swing_bars)</option>
+          </select>
+        ) : typeof v === "boolean" ? (
           <input type="checkbox" checked={v} onChange={(e) => set(sec, k, e.target.checked, strat)} className="ml-2" />
         ) : (
           <input

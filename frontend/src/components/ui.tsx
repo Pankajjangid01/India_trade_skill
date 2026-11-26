@@ -50,7 +50,9 @@ export const STATUS_LABEL: Record<string, string> = {
 };
 
 export const StrategyBadge = ({ k }: { k: string }) => (
-  <Badge tone={k === "ORB" ? "violet" : "blue"}>{k === "ORB" ? "ORB" : k === "EMA_PULLBACK" ? "EMA Pullback" : k}</Badge>
+  <Badge tone={k === "ORB" ? "violet" : k === "EMA_ORB" ? "green" : "blue"}>
+    {k === "ORB" ? "ORB" : k === "EMA_PULLBACK" ? "EMA Pullback" : k === "EMA_ORB" ? "EMA + ORB" : k}
+  </Badge>
 );
 
 export const Direction = ({ d }: { d: string }) => (

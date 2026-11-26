@@ -27,7 +27,7 @@ import sys
 import threading
 import time
 
-from app import config, paper, skills, timemachine
+from app import config, paper, research, skills, timemachine
 from app import strategies as strat
 from app.sp import FEED_SCRIPT, chain, exitplan, firstrun, risk, size, smart, tm
 from app.store import Store
@@ -40,6 +40,9 @@ BAR_RETRY_SEC = 10
 BAR_WAIT_SEC = 120          # evaluate anyway when the newest bar is this late
 LOGIN_RETRY_SEC = 60
 ALERTS_EVERY_SEC = 60
+OPTIONS_NOTE = ("No historical option prices: Angel One's getCandleData serves contracts that still trade, not "
+                "expired weeklies, and in-chain's own snapshots (trader/history/chain/) cover too few days. Results "
+                "here are index moves in R with option costs estimated in R; they are not option P&L.")
 FRESH_WAIT_SEC = 5          # in-risk's stale-data check: wait this long for fresh option and index ticks
 DEFAULT_SYMBOLS = ["NIFTY", "SENSEX", "BANKNIFTY"]
 SKILL_IO = threading.Lock()  # contextlib.redirect_stdout is process-wide: one in-process skill call at a time
@@ -393,7 +396,7 @@ class Engine:
             ltp, source, age = px.get(self.facts[s]["token"], (None, None, None))
             # every key exists from the start: the UI thread copies this dict while this thread updates it
             m = self.market.setdefault(s, {"symbol": s, "bars_source": None, "bars": 0, "last_bar_ist": None,
-                                           "bars_note": None})
+                                           "bars_note": None, "hybrid": None})
             prev = self.prev_close.get(s)
             m.update(ltp=ltp, source=source, age_sec=round(age, 1) if age is not None else None,
                      stale=ltp is None or (source == "feed" and age > stale_sec), prev_close=prev,
@@ -477,6 +480,7 @@ class Engine:
                 self.next_eval[s] = time.time() + BAR_RETRY_SEC
                 continue
             prev = self.previous_day_bars(s, now)
+            m["hybrid"] = self.hybrid_state(s, prev, bars, cfg)
             for sig in strat.evaluate(cfg, s, self.day, prev, bars, (cfg.get("session") or {}).get("range_end", "09:30")):
                 if not self.store.has_signal(sig["id"]):
                     self.process(sig, cfg)
@@ -487,6 +491,29 @@ class Engine:
             now = smart.now_ist()                           # candle calls take time: keep positions managed
             self.update_market(now, cfg)
             self.monitor(now, cfg)
+
+    def hybrid_state(self, sym, prev, bars, cfg):
+        """EMA_ORB's live view for the dashboard, from the same strat.ema_orb_evaluate the signals come from:
+        the opening range, the breakout status, the EMA trend and the last setups with their reasons."""
+        s = strat.strategy_cfg(cfg, "EMA_ORB")
+        range_end = (cfg.get("session") or {}).get("range_end", "09:30")
+        _, st = strat.ema_orb_evaluate(sym, self.day, strat.clean_bars(prev or []), bars, s, range_end)
+        rng, bo = st["opening_range"], st["breakout"]
+        out = {"enabled": bool(s["enabled"]), "opening_range": rng, "min_or_pct": float(s["min_or_pct"]),
+               "range_ok": bool(rng and rng["complete"] and rng["pct"] >= float(s["min_or_pct"])),
+               "breakout": "above the high since %s" % bo["bullish"] if bo["bullish"] and (
+                   not bo["bearish"] or bo["bullish"] > bo["bearish"]) else
+               "below the low since %s" % bo["bearish"] if bo["bearish"] else "inside the range" if rng else None,
+               "ema": None, "setups": st["setups"][-6:], "prev_day": prev is not None}
+        allb = strat.clean_bars(prev or []) + list(bars)
+        if len(allb) > int(s["slow"]) + 3:
+            closes = [b["close"] for b in allb]
+            f, sl = strat.ema(closes, int(s["fast"])), strat.ema(closes, int(s["slow"]))
+            trend = "bullish" if f[-1] > sl[-1] and sl[-1] > sl[-4] else "bearish" if f[-1] < sl[-1] and \
+                sl[-1] < sl[-4] else "no trend"
+            out["ema"] = {"fast": round(f[-1], 2), "slow": round(sl[-1], 2), "trend": trend,
+                          "period": [int(s["fast"]), int(s["slow"])]}
+        return out
 
     def previous_day_bars(self, s, now):
         if s not in self.prev_bars:
@@ -516,7 +543,10 @@ class Engine:
             if (t["net_pnl"] or 0) > 0:
                 break
             streak += 1
+        mine = sorted((t for t in self.store.trades(today) if t["strategy"] == sig["strategy"]),
+                      key=lambda t: t["entry_time"])
         ctx = {"open_trades": self.store.open_trades(), "trades_today": self.store.count_trades(today),
+               "strategy_first_exit": mine[0]["exit_reason"] if mine else None,
                "strategy_trades_today": self.store.count_trades(today, sig["strategy"]),
                "realized_today": sum(t["net_pnl"] or 0 for t in closed), "losses_in_a_row": streak,
                "underlying_ltp": (self.market.get(sig["symbol"]) or {}).get("ltp"),
@@ -799,6 +829,56 @@ class Engine:
                                         now, cal, f.get("expiries", ()))
         except smart.SmartError as e:
             raise EngineError(str(e))
+
+    def research_inputs(self, days, symbols, premiums=None, option_slippage_pct=None):
+        """History windows (one seed day + `days` days with bars), expiries, costs and 1R in rupees for the
+        comparison and the sweep. One broker session, history from the candle cache when it is there."""
+        now = smart.now_ist()
+        cfg = smart.load_config(self.trader)
+        cal = smart.read_json(self.p["calendar"], {}) or {}
+        bad = [s for s in symbols if s not in DEFAULT_SYMBOLS]
+        if bad or not symbols:
+            raise EngineError("symbols must be a non-empty subset of %s" % ", ".join(DEFAULT_SYMBOLS))
+        with self.op:
+            if not self.ensure_client(now):
+                raise EngineError("no broker session for history: %s" % (self.angel.get("last_error") or "login failed"))
+            if any(s not in self.facts for s in symbols) or self.day != now.date().isoformat() or not self.master_rows:
+                self.ensure_day(now, dict(cfg, paper=dict(cfg.get("paper") or {}, symbols=sorted(
+                    set(self.symbols(cfg)) | set(symbols)))), cal)
+            facts, client, rows = dict(self.facts), self.client, list(self.master_rows or [])
+        windows = {}
+        try:
+            for s in symbols:
+                f = facts.get(s)
+                if not f:
+                    raise EngineError("%s is not in today's instrument master" % s)
+                windows[s] = timemachine.history_window(self.trader, f["segment"], f["token"], client, days, now, cal)
+            lots = research.lots_from_master(rows, symbols, now.date())
+            missing = [s for s in symbols if not lots.get(s)]
+            if missing:
+                raise EngineError("no option lot size in today's master for %s" % ", ".join(missing))
+            ch = smart.read_json(self.p["charges"], {}) or {}
+            costs = research.cost_model(cfg, ch, lots, premiums, option_slippage_pct)
+            acct = cfg.get("account") or {}
+            risk_inr = float(smart.require_account(cfg)) * float(acct.get("risk_per_trade_pct", 1.0)) / 100
+        except smart.SmartError as e:
+            raise EngineError(str(e))
+        return cfg, windows, {s: facts[s].get("expiries", ()) for s in symbols}, costs, risk_inr, now
+
+    def backtest_compare(self, days, symbols, premiums=None, option_slippage_pct=None, stop_slippage_r=None):
+        cfg, windows, expiries, costs, risk_inr, now = self.research_inputs(days, symbols, premiums,
+                                                                            option_slippage_pct)
+        out = research.compare(windows, cfg, expiries, costs, risk_inr, stop_slippage_r)
+        out.update(as_of_ist=now.isoformat(), days=days, symbols=symbols, options=OPTIONS_NOTE)
+        return research.finite(out)
+
+    def backtest_sweep(self, days, symbols, version="EMA_ORB_C", premiums=None, option_slippage_pct=None,
+                       stop_slippage_r=None):
+        cfg, windows, expiries, costs, risk_inr, now = self.research_inputs(days, symbols, premiums,
+                                                                            option_slippage_pct)
+        out = research.sweep(windows, cfg, expiries, costs, risk_inr, version, stop_slippage_r)
+        out.update(as_of_ist=now.isoformat(), days=days, symbols=symbols, options=OPTIONS_NOTE)
+        return research.finite(out)
 
     # ------------------------------------------------------------ the UI's view
     def snapshot(self):

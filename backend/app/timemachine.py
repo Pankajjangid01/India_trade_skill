@@ -199,11 +199,25 @@ def walk(bars, i, bull, entry, stop, target, flat, target_r):
 
 
 def _ema_day(symbol, day, prev, bars, s, rule, expiry):
+    return _sequence(strat.ema_pullback_signals(symbol, day, prev, bars, s), day, bars, s, rule, expiry)
+
+
+def _ema_orb_day(symbol, day, prev, bars, s, rule, expiry):
+    """EMA_ORB through the very function the live engine calls (strat.ema_orb_signals)."""
+    sigs = strat.ema_orb_signals(symbol, day, prev, bars, s, rule["range_end"])
+    return _sequence(sigs, day, bars, s, rule, expiry)
+
+
+def _sequence(signals, day, bars, s, rule, expiry):
+    """The day's signals as the engine would trade them: inside the entry window, one position at a time,
+    at most max_trades_per_day, and (stop_after_first_sl) no more after a first trade that hit its stop."""
     last_entry = min(rule["entry_end"], rule["expiry_last_entry"]) if expiry else rule["entry_end"]
     flat = rule["expiry_flat_by"] if expiry else rule["flat_by"]
     out, free_at = [], "00:00"
-    for sig in strat.ema_pullback_signals(symbol, day, prev, bars, s):
+    for sig in signals:
         if len(out) >= int(s.get("max_trades_per_day", 2)):
+            break
+        if s.get("stop_after_first_sl") and out and out[0]["outcome"] == "stop":
             break
         if not rule["entry_start"] <= sig["bar_close_ist"] <= last_entry or sig["bar_start_ist"] < free_at:
             continue
@@ -214,7 +228,8 @@ def _ema_day(symbol, day, prev, bars, s, rule, expiry):
         out.append({"status": "trade", "date": day, "direction": sig["direction"], "expiry_day": expiry,
                     "entry_time": sig["bar_close_ist"], "entry": sig["entry_underlying"],
                     "stop": sig["stop_underlying"], "target": sig["target_underlying"], "outcome": outcome,
-                    "exit_time": exit_time, "r": r})
+                    "exit_time": exit_time, "r": r, "signal_id": sig["id"],
+                    **({"or_pct": sig["or_pct"], "stop_method": sig["stop_method"]} if "or_pct" in sig else {})})
         free_at = exit_time
     return out or [{"status": "no_trigger", "date": day}]
 
@@ -243,8 +258,9 @@ def simulate(symbol, strategy, cfg, window, expiries=()):
             days.append(dict(tm.replay_day(bars[d], rule, exp), date=d))
             if days[-1]["status"] == "trade":
                 days[-1]["r"] = days[-1]["r_gross"]
-        elif k > 0:                                     # EMA_PULLBACK is seeded with the day before
-            days += _ema_day(symbol, d, bars[used[k - 1]], bars[d], s, rule, exp)
+        elif k > 0:                                     # EMA_PULLBACK and EMA_ORB: seeded with the day before
+            day_fn = _ema_orb_day if strategy == "EMA_ORB" else _ema_day
+            days += day_fn(symbol, d, bars[used[k - 1]], bars[d], s, rule, exp)
     trades = [t for t in days if t["status"] == "trade"]
     if not trades:
         raise smart.SmartError("%s never fired on the %d days from %s to %s: nothing to resample" % (
@@ -341,6 +357,14 @@ def backtest(trader_dir, symbol, segment, token, client, cfg, strategy, days, no
     days = int(days)
     if not tm.MIN_DAYS <= days <= BACKTEST_MAX_DAYS:
         raise smart.SmartError("days must be %d to %d" % (tm.MIN_DAYS, BACKTEST_MAX_DAYS))
+    window = history_window(trader_dir, segment, token, client, days, now, cal, seed_day=strategy != "ORB")
+    data = simulate(symbol, strategy, cfg, window, expiries)
+    return _report(data, window, strategy, cfg, now)
+
+
+def history_window(trader_dir, segment, token, client, days, now, cal, seed_day=True):
+    """The last `days` closed trading days WITH BARS (plus one seed day before them when seed_day), through
+    smart.candles and its forever cache, reaching back past days that come back empty."""
     if client is None:
         raise smart.SmartError("no broker session: log in (the engine does it in market hours) to fetch history")
     # one day more than asked: EMA_PULLBACK seeds its EMAs with the day before the first one; and one more for
@@ -356,11 +380,14 @@ def backtest(trader_dir, symbol, segment, token, client, cfg, strategy, days, no
             break
         extra = empty
     full = [d for d in dates if got.get(d)]
-    if strategy == "ORB" and len(full) > days:              # ORB needs no seed day: the oldest one is left out
+    if not seed_day and len(full) > days:                   # ORB needs no seed day: the oldest one is left out
         dates = dates[dates.index(full[0]) + 1:]
-    window = {"dates": dates, "bars": {d: got[d] for d in dates if d in got},
-              "missing": [d for d in dates if d not in got], "partial": partial}
-    data = simulate(symbol, strategy, cfg, window, expiries)
+    return {"dates": dates, "bars": {d: got[d] for d in dates if d in got},
+            "missing": [d for d in dates if d not in got], "partial": partial}
+
+
+def _report(data, window, strategy, cfg, now):
+    partial = window["partial"]
     trades = [t for t in data["days"] if t["status"] == "trade"]
     cum, curve = 0.0, []
     for t in trades:

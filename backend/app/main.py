@@ -30,7 +30,7 @@ log = logging.getLogger("backend")
 from app import skills  # noqa: E402
 from app.engine import EngineError, engine  # noqa: E402
 from app.sp import smart  # noqa: E402
-from app.strategies import STRATEGIES, strategy_cfg  # noqa: E402
+from app.strategies import STOP_METHODS, STRATEGIES, ZERO_OK, strategy_cfg  # noqa: E402
 
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=config.CORS_ORIGINS)
 PUSH_SEC = 2
@@ -212,8 +212,10 @@ def clean_strategy(key, vals):
             v = want(v) if want is not bool else bool(v)
         except (TypeError, ValueError):
             raise HTTPException(422, "%s.%s must be %s" % (key, k, want.__name__))
-        if want in (int, float) and v <= 0:
-            raise HTTPException(422, "%s.%s must be above 0" % (key, k))
+        if want in (int, float) and (v < 0 if k in ZERO_OK else v <= 0):
+            raise HTTPException(422, "%s.%s must be %s 0" % (key, k, "at least" if k in ZERO_OK else "above"))
+        if k == "stop_method" and v not in STOP_METHODS:
+            raise HTTPException(422, "%s.stop_method must be one of %s" % (key, ", ".join(STOP_METHODS)))
         if k == "start_after" and not re.match(HHMM, v):
             raise HTTPException(422, "%s.start_after must be HH:MM" % key)
         if k == "stop_rule" and v not in ("or-mid", "or-opposite"):
@@ -310,5 +312,54 @@ async def backtest(body: BacktestIn):
     overrides = clean_strategy(body.strategy, body.overrides)
     try:
         return await run_in_threadpool(engine.backtest, body.symbol, body.strategy, body.days, overrides)
+    except EngineError as e:
+        raise HTTPException(409, str(e))
+
+
+class ResearchIn(BaseModel):
+    days: int = Field(250, ge=60, le=250)
+    symbols: List[str] = Field(default_factory=lambda: ["NIFTY", "BANKNIFTY", "SENSEX"])
+    assumed_premium: Dict[str, float] = Field(default_factory=dict)
+    option_slippage_pct: Optional[float] = Field(None, ge=0, le=10)
+    stop_slippage_r: Optional[float] = Field(None, ge=0, le=1)
+
+    @field_validator("symbols")
+    @classmethod
+    def known_symbols(cls, v):
+        v = [s.upper() for s in v]
+        if not v or any(s not in ("NIFTY", "SENSEX", "BANKNIFTY") for s in v):
+            raise ValueError("symbols must be a non-empty subset of NIFTY, SENSEX, BANKNIFTY")
+        return v
+
+    @field_validator("assumed_premium")
+    @classmethod
+    def premiums(cls, v):
+        if any(k.upper() not in ("NIFTY", "SENSEX", "BANKNIFTY") or not 1 <= x <= 5000 for k, x in v.items()):
+            raise ValueError("assumed_premium wants {NIFTY|SENSEX|BANKNIFTY: 1..5000}")
+        return {k.upper(): x for k, x in v.items()}
+
+
+class SweepIn(ResearchIn):
+    version: str = Field("EMA_ORB_C", pattern=r"^EMA_ORB_[BC]$")
+
+
+@api.post("/api/v1/backtest/compare")
+async def backtest_compare(body: ResearchIn):
+    """The four strategy versions on each index and combined, with costs, realistic fills and a
+    50 / 25 / 25 chronological train / validation / test split."""
+    try:
+        return await run_in_threadpool(engine.backtest_compare, body.days, body.symbols, body.assumed_premium,
+                                       body.option_slippage_pct, body.stop_slippage_r)
+    except EngineError as e:
+        raise HTTPException(409, str(e))
+
+
+@api.post("/api/v1/backtest/sweep")
+async def backtest_sweep(body: SweepIn):
+    """Targets 1R..3R x stop methods for the hybrid, chosen on train, confirmed on validation, test shown for
+    the chosen setting only."""
+    try:
+        return await run_in_threadpool(engine.backtest_sweep, body.days, body.symbols, body.version,
+                                       body.assumed_premium, body.option_slippage_pct, body.stop_slippage_r)
     except EngineError as e:
         raise HTTPException(409, str(e))
